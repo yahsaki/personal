@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+  <head></head>
+  <body>
+    <script>
+      var _ = {
+        mode: null,
+        clean: () => {
+          const head = document.querySelector('head')
+          while(head.firstChild) head.removeChild(head.firstChild)
+          const body = document.querySelector('body')
+          for (let i = 0; i < body.children.length; i++) {
+            if (body.children[i].localName !== 'script') {
+              body.children[i].remove()
+            }
+          }
+        },
+        init: () => {
+          _.clean()
+          if (typeof _.current.css === 'function') _.current.css()
+          if (typeof _.current.html === 'function') _.current.html()
+          if (typeof _.current.script === 'function') _.current.script()
+          if (typeof _.current.onLoad === 'function') _.current.onLoad()
+        },
+        current: {css: null, html: null, script: null},
+        load: { home: null },
+        tool: {},
+      }
+    </script>
+    <script id="home" src="scripts/home.js"></script>
+    <script id="tester" src="scripts/tools/tester.js"></script>
+    <script id="kawaru" src="scripts/tools/kawaru.js"></script>
+    <script id="text_slider" src="scripts/tools/text_slider.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        if(false) {//if (window.location.protocol === 'file:') {
+          alert('host me properly please otherwise I wont work')
+          const body = document.querySelector('body')
+          for (let i = 0; i < body.children.length; i++) {
+            if (body.children[i].localName !== 'script') {
+              body.children[i].remove()
+            }
+          }
+          const el = document.createElement('span')
+          el.setAttribute('style', 'font-size:100px;font-weight:bold;color:red;')
+          el.innerText = "USE HTTP SERVER!"
+          body.appendChild(el)
+          return
+        }
+
+        console.log('document loaded')
+        // naming is all messed up, init sounds like it should be first. do something
+        _.load.home()
+        _.init()
+      })
+    </script>
+  </body>
+</html>

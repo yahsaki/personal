@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      p {
+        animation-duration: 10s;
+        animation-name: slidein;
+      }
+      @keyframes slidein {
+        from {
+          margin-left: 100%;
+          width: 300%;
+        }
+
+        to {
+          margin-left: -100%;
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <p id="animate">
+      The Caterpillar and Alice looked at each other for some time in silence: at
+      last the Caterpillar took the hookah out of its mouth, and addressed her in a
+      languid, sleepy voice.
+    </p>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+
+        const el = document.getElementById("animate")
+        el.addEventListener("animationstart", listener, false)
+        el.addEventListener("animationend", listener, false)
+        el.addEventListener("animationiteration", listener, false)
+        el.className = "slidein"
+
+
+      })
+
+      function listener(event) {
+        switch (event.type) {
+          case "animationstart":
+            console.log(`Started: elapsed time is ${event.elapsedTime}`)
+            break;
+          case "animationend":
+            console.log(`Ended: elapsed time is ${event.elapsedTime}`)
+            const el = document.getElementById('animate')
+            
+            el.textContent = 'lets go one more round'
+            el.animate([
+              {
+                marginLeft: '100%',
+                width: '300%',
+              },
+              {
+                marginLeft: '-100%',
+                width: '100%',
+              }
+            ], 3000)
+            break;
+        }
+      }
+    </script>
+  </body>
+</html>

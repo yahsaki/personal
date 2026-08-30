@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      p {
+        animation-duration: 10s;
+        animation-name: slidein;
+      }
+      @keyframes slidein {
+        from {
+          margin-left: 100%;
+          width: 300%;
+        }
+
+        to {
+          margin-left: -100%;
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <p>
+      The Caterpillar and Alice looked at each other for some time in silence: at
+      last the Caterpillar took the hookah out of its mouth, and addressed her in a
+      languid, sleepy voice.
+    </p>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+  <head>
+    <title>V0 homepage LETS GOOOOOOOO</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      .container {
+        display: grid;
+        grid-template-columns: [col0] auto [col1] auto [col2] auto [col3] auto [col4] auto [col5] auto [col6] auto [col7] auto [col8] auto [col9] auto [col10] auto [col11] auto [col12] auto [col13] auto [col14] auto [col15] auto [col16] auto [col17] auto [col18] auto [col19];
+        grid-template-rows: [row0] auto [row1] auto [row2] auto [row3] auto [row4] auto [row5] auto [row6] auto [row7] auto [row8] auto [row9] auto [row10] auto [row11] auto [row12] auto [row13] auto [row14] auto [row15] auto [row16] auto [row17] auto [row18] auto [row19];
+        border: 1px solid black;
+        column-gap: 2px;
+        row-gap: 2px;
+      }
+      .item {
+        min-height: 100px;
+      }
+      .s-text-slider0 {
+        grid-column-start: col6;
+        grid-column-end: col13;
+        grid-row-start: row0;
+        grid-row-end: row6;
+        border: 1px solid yellow;
+      }
+      .s-tester {
+        grid-column-start: col8;
+        grid-column-end: col11;
+        grid-row-start: row8;
+        grid-row-end: row14;
+        border: 1px solid green;
+      }
+      .s-terminal {
+        grid-column-start: col13;
+        grid-column-end: col17;
+        grid-row-start: row0;
+        grid-row-end: row19;
+        border: 1px solid blue;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="item s-text-slider0"></div>
+      <div class="item s-tester"></div>
+      <div class="item s-terminal"></div>
+    </div>
+    <script>
+      /*
+        so, bottom right is terminal,
+        left of terminal is tester
+        the rest are text sliders so far
+          - one slider section latest news
+          - past news, older than n
+          - slider section of whitehouse(statements)
+          - CISA
+          - CVs(did I forget teh mfuclkty name again?)
+          - TBD
+
+        that makes 8 sections. lets make em all even?
+      */
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        resize()
+        window.addEventListener('resize', resize)
+        if(false) {//if (window.location.protocol === 'file:') {
+          alert('host me properly please otherwise I wont work')
+          const body = document.querySelector('body')
+          for (let i = 0; i < body.children.length; i++) {
+            if (body.children[i].localName !== 'script') {
+              body.children[i].remove()
+            }
+          }
+          const el = document.createElement('span')
+          el.setAttribute('style', 'font-size:100px;font-weight:bold;color:red;')
+          el.innerText = "USE HTTP SERVER!"
+          body.appendChild(el)
+          return
+        }
+      })
+
+      function resize() {
+        document.querySelector('.container').setAttribute('style', `height:${window.innerHeight - 20}px;`)
+      }
+    </script>
+  </body>
+</html>

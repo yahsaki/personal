@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      #content {
+        border: 1px solid yellow;
+        padding: 10px;
+        margin: 10px;
+      }
+      .text-slider-container {
+        white-space: nowrap;
+        overflow: hidden;
+        margin: 2px;
+      }
+      .red {
+        border: 1px solid red;
+      }
+      .green {
+        border: 1px solid green;
+      }
+      .text-slider-title-wrapper {
+        display: flex;
+        font-size: 10px;
+        font-weight: bold;
+      }
+      .text-slider-title-link-wrapper {}
+      .text-slider-title-link {}
+      .text-slider-title-text {
+        cursor: help;
+      }
+      .text-slider-wrapper {}
+      .text-slider-content {}
+
+      .blink {
+        animation: blinker 1s linear infinite;
+        color: yellow;
+      }
+
+      @keyframes blinker {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+
+    </div>
+    <script>
+    // same as text slider 4 but content is split every n characters
+      var _ = {
+        intervalId: null,
+        // separate textSlider and textSliders smarterly
+        textSlider: {
+          config: {
+            baseSpeed: 75000,
+            m0: 8,
+            m1: 11,
+          },
+        },
+        textSliders: [],
+      }
+      const createElement = (type, attribs = [], text = null, parent = null) => {
+        const element = document.createElement(type)
+        if (text) element.textContent = text
+        attribs.forEach(a => { element.setAttribute(a.name, a.val) })
+        if (parent) parent.appendChild(element)
+        return element
+      }
+      var canvas = document.createElement("canvas")
+
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+
+        createTextSlider({
+          data: [
+            {title:'some number',content:'0'},
+            {title:'TITLE HEREE',content:'really small text here whups'},
+          ],parentSelector:'#content',config:_.textSlider.config})
+
+        _.intervalId = setInterval(doMaintenance, 1000)
+        setTimeout(() => {
+          createTextSlider({
+            data: [
+              {title:'some text stolen from a book it looks like',content:'The Caterpillar and Alice looked at each other for some time in silence: at last the Caterpillar took the hookah out of its mouth, and addressed her in a languid, sleepy voice.'},
+              {title:'RANDOM',content:'This is some random text typed by me on an M4800 keyboard for testing this new stuff im learning and devloping right now weeeeee.'},
+            ],parentSelector:'#content',config:_.textSlider.config})
+        }, 1000)
+      })
+
+      function doMaintenance() {
+        try {
+          const textSliderDeleteArr = []
+          for (let i = 0; i < _.textSliders.length; i++) {
+            const ts = _.textSliders[i]
+
+            const el = document.getElementById(ts.id)
+            if (el) continue
+
+            animate({
+              id: ts.id,
+              parentSelector: ts.parentSelector,
+              data: ts.data[ts.index],
+              config: ts.config,
+              cb: () => {
+                ts.index += 1
+                ts.executions += 1
+                if (ts.index >= ts.data.length) {
+                  console.log('reset index')
+                  ts.index = 0
+                }
+              },
+            })
+          }
+        } catch (err) {
+          console.log(err)
+          alert(err.message || JSON.stringify(err))
+          clearInterval(_.intervalId)
+          console.log('disabled interval')
+        }
+      }
+      // very misleading. only the js object is created. actual slider is created in animate()...
+      function createTextSlider(args) {
+        const parentSelector = args.parentSelector
+        const data = args.data
+        const config = args.config
+
+        const el = document.querySelector(parentSelector)
+        if (!el) throw Error(`failed to find element '${parentSelector}'`)
+
+        if (!Array.isArray(data)) {
+          throw Error(`data must be an array, received '${typeof data}'`)
+        }
+        for (let i = 0; i < data.length; i++) {
+          // ive never gone this far for other implementations. I feel like im going to goof this one
+          // a lot though
+          if (!data[i].title.length || typeof data[i].title !== 'string') {
+            throw Error(`text slider data requires populated string title`)
+          }
+          if (!data[i].content.length || typeof data[i].content !== 'string') {
+            throw Error(`text slider data requires populated string content`)
+          }
+        }
+        const slider = {
+          id: `text-slider_${_.textSliders.length}_${new Date().toISOString()}`,
+          parentSelector,
+          index: 0,
+          executions: 0,
+          data,
+          config,
+        }
+        _.textSliders.push(slider)
+
+        console.log(`slider '${slider.id}' created`)
+      }
+
+      function animate(args) {
+        const id = args.id
+        const parentSelector = args.parentSelector
+        const data = args.data
+        const config = args.config
+        const cb = args.cb
+
+        const parent = document.querySelector(parentSelector)
+        if (!parent) {
+          console.error(`text slider parent '${parentSelector}' doesnt exists`)
+          return
+        }
+        let container = document.getElementById(id)
+        if (container) {
+          console.error(`text slider '${id}' already exists`)
+          return
+        }
+
+        // TODO: add a 'data-type: text-slider' or something to it
+        container = createElement('div', [{name:'class',val:'text-slider-container'},{name:'id',val:id}],null,parent)
+        const titleWrapper = createElement('div',[
+          {name:'class',val:'text-slider-title-wrapper'},
+          {name:'title',val:data.title},
+        ],null,container)
+        const linkWrapper = createElement('div',[{name:'class',val:'text-slider-title-link-wrapper'}],null,titleWrapper)
+        const link = createElement('a',[
+          {name:'class',val:'blink'},
+          {name:'target',val:'_blank'},
+        ],'[»]',linkWrapper)
+        const title = createElement('div',[{name:'class',val:'text-slider-title-text'}],data.title,titleWrapper)
+        const slider = createElement('div',[{name:'class',val:'text-slider-content'}],data.content,container)
+
+        const textWidth = getTextWidth(slider.textContent, getCanvasFont(slider))
+        const ms = config.baseSpeed + (data.content.length * config.m0) * config.m1
+        //console.log(`${id} width: ${textWidth}`)
+        const aoi = slider.animate(
+          [
+            {marginLeft: '100%',width: '300%'},
+            {marginLeft: `-${Math.floor(textWidth)}px`,width: '100%'}
+          ],
+          ms
+        )
+        aoi.onfinish = (event) => {
+          //console.log('animation complete')
+          document.getElementById(id).remove()
+          if (typeof cb === 'function') cb()
+        }
+      }
+
+      function getTextWidth(text, font) {
+        const context = canvas.getContext("2d")
+        context.font = font
+        const metrics = context.measureText(text)
+        return metrics.width
+      }
+
+      function getCssStyle(element, prop) {
+          return window.getComputedStyle(element, null).getPropertyValue(prop)
+      }
+
+      function getCanvasFont(el = document.body) {
+        const fontWeight = getCssStyle(el, 'font-weight') || 'normal'
+        const fontSize = getCssStyle(el, 'font-size') || '16px'
+        const fontFamily = getCssStyle(el, 'font-family') || 'Times New Roman'
+
+        return `${fontWeight} ${fontSize} ${fontFamily}`
+      }
+    </script>
+  </body>
+</html>

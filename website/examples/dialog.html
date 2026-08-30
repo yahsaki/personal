@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      .dialog-close-btn {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    
+    <div id="content">
+      <button id="open-dialog-btn">open dialog</button>
+    </div>
+
+    <script>
+      /*
+        workflow
+        - on open, add dialog to root of body
+        - hide content, or essentially all other children of body
+        - unhide dialog. its not a dialog at this point tho
+      */
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        window.addEventListener('keydown', onInputKeydown)
+      })
+
+      function showDialog() {
+        if (document.querySelectorAll('.dialog').length) {
+          console.error('only one thingy at a time')
+          return
+        }
+        const body = document.querySelector('body')
+        console.log('cheedren', body.children)
+        for (let i = 0; i < body.children.length; i++) {
+          if (body.children[i].localName !== 'script') {
+            body.children[i].style.display = 'none'
+          }
+        }
+        const dialog = document.createElement('div')
+        dialog.setAttribute('class', 'dialog')
+        dialog.innerHTML = `
+          <div class="dialog-header">
+            <span class="dialog-close-btn">&#10006;</span>
+          </div>  
+          <div class="dialog-body">
+          </div>
+        `
+        body.append(dialog)
+        document.querySelector('.dialog-close-btn').addEventListener('click', closeDialog)
+        /*dialog.addEventListener('keydown', (e) => {
+          console.log('ekey', e.key)
+          if (e.key === 'Escape') {
+            closeDialog()
+          }
+        })*/
+      }
+
+      function closeDialog() {
+        if (!document.querySelectorAll('.dialog').length) {
+          //console.error('no dialog to close')
+          return
+        }
+
+        const body = document.querySelector('body')
+        for (let i = 0; i < body.children.length; i++) {
+          if (body.children[i].localName !== 'script') {
+            body.children[i].style.display = ''
+          }
+        }
+        
+        console.log('dailogs', dialogs)
+        for (const el of document.querySelectorAll('.dialog')) {
+          el.remove()
+        }
+      }
+
+      function onInputKeydown(e) {
+        console.log(e.key)
+        if (e.key === 'Escape') {
+          closeDialog()
+        }
+        if (e.key !== 'Enter') return
+        if (!e.target?.value?.length) return
+        const input = e.target.value
+        
+        handleInput(input)
+
+        e.target.value = ""
+      }
+
+      /*function toggleDialog() {
+        const el = document.getElementById('dialog')
+        if (el.style.display == 'none') {
+          el.style.display = '';
+        } else {
+          el.style.display = 'none';
+        }
+      }*/
+    </script>
+  </body>
+</html>

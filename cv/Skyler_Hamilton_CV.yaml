@@ -1,0 +1,251 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/rendercv/rendercv/refs/tags/v2.8/schema.json
+cv:
+  name: Skyler Hamilton
+  location: Las Vegas, NV
+  email: myresume@yahsaki.com
+  phone: +1(000)1112222
+  social_networks:
+    - network: LinkedIn
+      username: skyler-hamilton
+    - network: GitHub
+      username: yahsaki
+  sections:
+    experience:
+      - company: Reliant Programming Consultancy Services
+        position: Software Developer(On the Job Learning)
+        start_date: 2012-03
+        end_date: 2016-12
+        location: Las Vegas, NV
+        summary: Hired to learn software development on the job
+        highlights:
+          - Built payment gatways in SOAP & .net framework 3.5 webforms
+          - Maintained a web project that allowed real estate agents to get legal documents online
+          - Implemented Hudson CI pipeline for all projects(versioned with Subversion)
+          - Implemented integration testing for all applicable projects with Selenium
+          - built an abomination full PHP website inside of a Wordpress website
+      - company: INVIEWLabs, Inc/UNIFILabs, Inc
+        position: Software Developer
+        start_date: 2016-12
+        end_date: 2023-04
+        location: Las Vegas, NV
+        summary: Built my most expansive projects at this company
+        highlights:
+          - (Migrated from Subversion to Mercurial near the beginning of this job)
+          - Created the intranet site for a Catepillar branch with Sharepoint 2010. This nightmare job changed my life forever
+          - Created an AutoCAD and MicroStation v8i/10 plugin that manages files
+          - (Migrated from Mercurial to Git around this time)
+          - (Company migrated on prem servers to AWS)
+          - Built IOS/Android mobile applications with Xamarin(we ignored windows phones at this time)
+          - AWS Certified at RE:Invent 2018
+          - Converted a large file processing windows server into a fully cloud setup with AWS Firehose, ElasticSearch, Lambda and S3. Costs went from $40k/m to less than $5k/m
+          - Implemented a large data aggregation pipeline with AWS APIG, DynamoDB, S3
+          - Worked on way too many React projects 
+      - company: Autodesk, Inc
+        position: Software Developer(DevOps)
+        start_date: 2023-04
+        end_date: 2026-04
+        location: Las Vegas, NV
+        summary: 100% WFH. I did mostly DevOps and maintenance here
+        highlights:
+          - Performed mostly DevOps here
+          - Managed Jenkins pipeline until it was sunsetted late in this term
+          - Modified main project for SOC2 verification(successfully)
+    skills:
+      - label: Trait
+        details: Combat coder- excel under pressure
+      - label: Languages
+        details: C#, Javascript, Python, Bash
+      - label: Cloud Compute
+        details: AWS(strongest), Azure, GCP(very little)
+      - label: AWS Resources
+        details: Lambda, EC2, APIGateway, ElasticSearch, S3, CloudFront, etc
+      - label: Frameworks/Libraries
+        details: React, NextJS, Svelte(little), TanStack, Terraform, MSSQL, PostgresQL, SQLite, MongoDB
+      - label: Historical Frameworks/Libraries
+        details: Hudson, Lerna, Selenium(still active), Angular(version 1), Xamarin, Wordpress(time to time)
+design:
+  theme: classic
+  # page:
+  #   size: us-letter
+  #   top_margin: 0.7in
+  #   bottom_margin: 0.7in
+  #   left_margin: 0.7in
+  #   right_margin: 0.7in
+  #   show_footer: true
+  #   show_top_note: true
+  # colors:
+  #   body: rgb(0, 0, 0)
+  #   name: rgb(0, 79, 144)
+  #   headline: rgb(0, 79, 144)
+  #   connections: rgb(0, 79, 144)
+  #   section_titles: rgb(0, 79, 144)
+  #   links: rgb(0, 79, 144)
+  #   footer: rgb(128, 128, 128)
+  #   top_note: rgb(128, 128, 128)
+  # typography:
+  #   line_spacing: 0.6em
+  #   alignment: justified
+  #   date_and_location_column_alignment: right
+  #   font_family:
+  #     body: Source Sans 3
+  #     name: Source Sans 3
+  #     headline: Source Sans 3
+  #     connections: Source Sans 3
+  #     section_titles: Source Sans 3
+  #   font_size:
+  #     body: 10pt
+  #     name: 30pt
+  #     headline: 10pt
+  #     connections: 10pt
+  #     section_titles: 1.4em
+  #   small_caps:
+  #     name: false
+  #     headline: false
+  #     connections: false
+  #     section_titles: false
+  #   bold:
+  #     name: true
+  #     headline: false
+  #     connections: false
+  #     section_titles: true
+  # links:
+  #   underline: false
+  #   show_external_link_icon: false
+  # header:
+  #   alignment: center
+  #   photo_width: 3.5cm
+  #   photo_position: left
+  #   photo_space_left: 0.4cm
+  #   photo_space_right: 0.4cm
+  #   space_below_name: 0.7cm
+  #   space_below_headline: 0.7cm
+  #   space_below_connections: 0.7cm
+  #   connections:
+  #     phone_number_format: national
+  #     hyperlink: true
+  #     show_icons: true
+  #     display_urls_instead_of_usernames: false
+  #     separator: ''
+  #     space_between_connections: 0.5cm
+  # section_titles:
+  #   type: with_partial_line
+  #   line_thickness: 0.5pt
+  #   space_above: 0.5cm
+  #   space_below: 0.3cm
+  # sections:
+  #   allow_page_break: true
+  #   space_between_regular_entries: 1.2em
+  #   space_between_text_based_entries: 0.3em
+  #   show_time_spans_in:
+  #     - experience
+  # entries:
+  #   date_and_location_width: 4.15cm
+  #   side_space: 0.2cm
+  #   space_between_columns: 0.1cm
+  #   allow_page_break: false
+  #   short_second_row: true
+  #   degree_width: 1cm
+  #   summary:
+  #     space_above: 0cm
+  #     space_left: 0cm
+  #   highlights:
+  #     bullet: •
+  #     nested_bullet: •
+  #     space_left: 0.15cm
+  #     space_above: 0cm
+  #     space_between_items: 0cm
+  #     space_between_bullet_and_text: 0.5em
+  # templates:
+  #   footer: '*NAME -- PAGE_NUMBER/TOTAL_PAGES*'
+  #   top_note: '*LAST_UPDATED CURRENT_DATE*'
+  #   single_date: MONTH_ABBREVIATION YEAR
+  #   date_range: START_DATE – END_DATE
+  #   time_span: HOW_MANY_YEARS YEARS HOW_MANY_MONTHS MONTHS
+  #   one_line_entry:
+  #     main_column: '**LABEL:** DETAILS'
+  #   education_entry:
+  #     main_column: |-
+  #       **INSTITUTION**, AREA
+  #       SUMMARY
+  #       HIGHLIGHTS
+  #     degree_column: '**DEGREE**'
+  #     date_and_location_column: |-
+  #       LOCATION
+  #       DATE
+  #   normal_entry:
+  #     main_column: |-
+  #       **NAME**
+  #       SUMMARY
+  #       HIGHLIGHTS
+  #     date_and_location_column: |-
+  #       LOCATION
+  #       DATE
+  #   experience_entry:
+  #     main_column: |-
+  #       **COMPANY**, POSITION
+  #       SUMMARY
+  #       HIGHLIGHTS
+  #     date_and_location_column: |-
+  #       LOCATION
+  #       DATE
+  #   publication_entry:
+  #     main_column: |-
+  #       **TITLE**
+  #       SUMMARY
+  #       AUTHORS
+  #       URL (JOURNAL)
+  #     date_and_location_column: DATE
+locale:
+  language: english
+  # last_updated: Last updated in
+  # month: month
+  # months: months
+  # year: year
+  # years: years
+  # present: present
+  # phrases:
+  #   degree_with_area: DEGREE in AREA
+  # month_abbreviations:
+  #   - Jan
+  #   - Feb
+  #   - Mar
+  #   - Apr
+  #   - May
+  #   - June
+  #   - July
+  #   - Aug
+  #   - Sept
+  #   - Oct
+  #   - Nov
+  #   - Dec
+  # month_names:
+  #   - January
+  #   - February
+  #   - March
+  #   - April
+  #   - May
+  #   - June
+  #   - July
+  #   - August
+  #   - September
+  #   - October
+  #   - November
+  #   - December
+settings:
+  current_date: today
+  render_command:
+    output_folder: rendercv_output
+    design:
+    locale:
+    typst_path: OUTPUT_FOLDER/NAME_IN_SNAKE_CASE_CV.typ
+    pdf_path: OUTPUT_FOLDER/NAME_IN_SNAKE_CASE_CV.pdf
+    markdown_path: OUTPUT_FOLDER/NAME_IN_SNAKE_CASE_CV.md
+    html_path: OUTPUT_FOLDER/NAME_IN_SNAKE_CASE_CV.html
+    png_path: OUTPUT_FOLDER/NAME_IN_SNAKE_CASE_CV.png
+    dont_generate_markdown: false
+    dont_generate_html: false
+    dont_generate_typst: false
+    dont_generate_pdf: false
+    dont_generate_png: false
+  bold_keywords: []
+  pdf_title: NAME - CV

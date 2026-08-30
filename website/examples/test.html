@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      span {
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <p>my site</p>
+    <span id="s0">really small text here whups</span>
+    <span id="s1">The Caterpillar and Alice looked at each other for some time in silence: at last the Caterpillar took the hookah out of its mouth, and addressed her in a languid, sleepy voice.</span>
+    <script>
+      const canvas = document.createElement("canvas")
+      document.addEventListener('DOMContentLoaded', () => {
+        //console.log(getTextWidth("hello there!", "bold 12pt arial"))
+        const el = document.getElementById('s1')
+        const fontSize = getTextWidth(el.textContent, getCanvasFont(el));
+        console.log(fontSize)
+      })
+
+      function getTextWidth(text, font) {
+        // re-use canvas object for better performance
+        //const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+        const context = canvas.getContext("2d");
+        context.font = font;
+        const metrics = context.measureText(text);
+        return metrics.width;
+      }
+
+      function getCssStyle(element, prop) {
+          return window.getComputedStyle(element, null).getPropertyValue(prop);
+      }
+
+      function getCanvasFont(el = document.body) {
+        const fontWeight = getCssStyle(el, 'font-weight') || 'normal';
+        const fontSize = getCssStyle(el, 'font-size') || '16px';
+        const fontFamily = getCssStyle(el, 'font-family') || 'Times New Roman';
+        
+        return `${fontWeight} ${fontSize} ${fontFamily}`;
+      }
+    </script>
+  </body>
+</html>

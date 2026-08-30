@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>website</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      .text-slider-container {
+        white-space: nowrap;
+        overflow: hidden;
+        margin: 2px;
+      }
+      .red {
+        border: 1px solid red;
+      }
+      .green {
+        border: 1px solid green;
+      }
+      .text-slider-title {
+        font-size: 10px;
+        font-weight: bold;
+      }
+      .text-slider-title-link {}
+      .text-slider-title-text {
+        cursor: help;
+      }
+      .text-slider-wrapper {}
+      .text-slider {}
+      .blink {
+        animation: blinker 5s linear infinite;
+        color: yellow;
+      }
+
+      @keyframes blinker {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="text-slider-container red">
+      <div class="text-slider-title" title="240109[ARTICLE] Securing helpdesks from hackers: What we can learn from the MGM breach">
+        <span class="text-slider-title-link">
+          <a class="blink" href="https://google.com" target="_blank">[»]</a>
+        </span>
+        <span class="text-slider-title-text">
+          24-01-09:[ARTICLE](not sure what the other types will be other than ARTICLE. what about 'ART'?) Securing helpdesks from hackers: What we can learn from the MGM breach
+        </span>
+      </div>
+      <div class="text-slider-content">
+        In the wake of the MGM Resorts service desk hack, it's clear that organizations need to rethink their approach to security, particularly when it comes to verifying the identity of employees contacting the helpdesk. Employee accounts are of paramount concern as they can provide access to internal systems.
+      </div>
+    </div>
+
+    <div class="text-slider-container green">
+      <div class="text-slider-title">
+        240109[type] this title
+      </div>
+      <div class="text-slider-content">
+        descritopns here
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+      })
+    </script>
+  </body>
+</html>

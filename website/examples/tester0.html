@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="open-dialog-btn">open dialog</button>
+    <div id="dialog">
+      
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        // hide dialog
+        document.getElementById('dialog').style = 'display:none'
+
+        document.getElementById('open-dialog-btn').addEventListener('click', doThings0)
+      })
+
+      // goal is to create dialog off screen and move it on screen. on close,
+      // slide it off screen
+      function doThings0() {
+        // create
+      }
+    </script>
+  </body>
+</html>

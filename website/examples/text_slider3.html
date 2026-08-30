@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      #content {
+        border: 1px solid black;
+        padding: 10px;
+        margin: 10px;
+      }
+      #text-slider-container {
+        width: 50%;
+        border: 1px solid red;
+        margin: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      #text-slider {
+
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <div id="text-slider-container">
+        <div id="text-slider"></div>
+      </div>
+    </div>
+    <script>
+      var _ = {
+        intervalId: null,
+        // separate textSlider and textSliders smarterly 
+        textSlider: {
+          config: {
+            baseSpeed: 7500,
+            m0: 8,
+            m1: 11,
+          },
+        },
+        textSliders: [],
+
+      }
+      var canvas = document.createElement("canvas")
+
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        const data = [
+          '0',
+          'really small text here whups',
+          'The Caterpillar and Alice looked at each other for some time in silence: at last the Caterpillar took the hookah out of its mouth, and addressed her in a languid, sleepy voice.',
+          'This is some random text typed by me on an M4800 keyboard for testing this new stuff im learning and devloping right now weeeeee.',
+        ]
+        createTextSlider({data,parentId:'text-slider-container', config:_.textSlider.config})
+
+        _.intervalId = setInterval(doMaintenance, 1000)
+      })
+      
+      function doMaintenance() {
+        try {
+          // I have no system to turn off sliders yet or swap data, but this
+          // infra supports it wholeheartedly
+          const textSliderDeleteArr = []
+          for (let i = 0; i < _.textSliders.length; i++) {
+            const ts = _.textSliders[i]
+            
+            // check if the sliders element exists
+            const el = document.getElementById(ts.id)
+            if (el) return
+
+            // check if its already animated
+            // wait, instead of checking for stopped/running, we can just 
+            // look for this, cleaner code. lets do that
+            //const anims = el.getAnimations()
+            //if (anims.length) {
+              //console.log(`text slider '${ts.id}' is animated`)
+              //continue
+            //}
+
+            // uhhh, good to go at this point?
+            animate({
+              id: ts.id,
+              parentId: ts.parentId,
+              text: ts.data[ts.index],
+              config: ts.config,
+              cb: () => {
+                ts.index += 1
+                ts.executions += 1
+                if (ts.index >= ts.data.length) {
+                  console.log('reset index')
+                  ts.index = 0
+                }
+              },
+            })
+          }
+
+          //for (let i = 0; i < textSliderDeleteArr.length; i++) {
+          //  // not sure if this is correct
+          //  const slider = _.textSliders.splice(1, textSliderDeleteArr[i].index)[0]
+          //  console.log(`slider '${slider.id}' removed`)
+          //}
+        } catch (err) {
+          alert(err.message || JSON.stringify(err))
+          clearInterval(_.intervalId)
+          console.log('disabled interval')
+        }
+      }
+      function createTextSlider(args) {
+        const parentId = args.parentId
+        const data = args.data
+        const config = args.config
+
+        const el = document.getElementById(parentId)
+        if (!el) throw Error(`failed to find element '${parentId}'`)
+        // TODO: confirm data is in order
+
+        const slider = {
+          id: `text_slider_${new Date().toISOString()}`,
+          parentId: parentId,
+          index: 0,
+          executions: 0,
+          data,
+          config,
+        }
+        _.textSliders.push(slider)
+        console.log(`slider '${slider.id}' created`)
+      }
+
+      function animate(args) {
+        const id = args.id
+        const parentId = args.parentId
+        const text = args.text
+        const config = args.config
+        const cb = args.cb
+
+        const parent = document.getElementById(parentId)
+        if (!parent) {
+          console.error(`text slider parent '${parentId}' doesnt exists`)
+          return
+        }
+        let el = document.getElementById(id)
+        if (el) {
+          console.error(`text slider '${id}' already exists`)
+          return
+        }
+
+        // TODO: add a 'data-type: text-slider' or something to it
+        el = document.createElement('div')
+        el.setAttribute('id', id)
+        parent.append(el)
+        el.textContent = text
+        const textWidth = getTextWidth(el.textContent, getCanvasFont(el));
+        const ms = config.baseSpeed + (text.length * config.m0) * config.m1
+        //console.log(`${id} width: ${textWidth}`)
+        const aoi = el.animate(
+          [
+            {marginLeft: '100%',width: '300%'},
+            {marginLeft: `-${Math.floor(textWidth)}px`,width: '100%'}
+          ],
+          ms
+        )
+        aoi.onfinish = (event) => {
+          //console.log('animation complete')
+          document.getElementById(id).remove()
+          if (typeof cb === 'function') cb()
+        }
+      }
+
+      function getTextWidth(text, font) {
+        const context = canvas.getContext("2d");
+        context.font = font;
+        const metrics = context.measureText(text);
+        return metrics.width;
+      }
+
+      function getCssStyle(element, prop) {
+          return window.getComputedStyle(element, null).getPropertyValue(prop);
+      }
+
+      function getCanvasFont(el = document.body) {
+        const fontWeight = getCssStyle(el, 'font-weight') || 'normal';
+        const fontSize = getCssStyle(el, 'font-size') || '16px';
+        const fontFamily = getCssStyle(el, 'font-family') || 'Times New Roman';
+        
+        return `${fontWeight} ${fontSize} ${fontFamily}`;
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+  <head>
+    <title>bar chart 0</title>
+
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+
+      .bar {
+        fill: #aaa;
+        height: 21px;
+        transition: fill 0.3s ease;
+        cursor: pointer;
+        font-family: Helvetica, sans-serif;
+      }
+      .bar text {
+        fill: #555;
+      }
+
+      .chart:hover .bar,
+      .chart:focus .bar {
+        fill: #aaa;
+      }
+
+      .bar:hover,
+      .bar:focus {
+        fill: red !important;
+      }
+      .bar:hover text,
+      .bar:focus text {
+        fill: red;
+      }
+
+      figcaption {
+        font-weight: bold;
+        color: #000;
+        margin-bottom: 20px;
+      }
+
+      body {
+        font-family: "Open Sans", sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script>
+      /*
+        bar width algorithm
+
+        23 250
+
+    <svg class="chart" width="420" height="150" aria-labelledby="title desc" role="img">
+      <g class="bar">
+        <rect width="40" height="19"></rect>
+        <text x="45" y="9.5" dy=".35em">4 apples</text>
+      </g>
+      <g class="bar">
+        <rect width="80" height="19" y="20"></rect>
+        <text x="85" y="28" dy=".35em">8 bananas</text>
+      </g>
+      <g class="bar">
+        <rect width="150" height="19" y="40"></rect>
+        <text x="150" y="48" dy=".35em">15 kiwis</text>
+      </g>
+      <g class="bar">
+        <rect width="160" height="19" y="60"></rect>
+        <text x="161" y="68" dy=".35em">16 oranges</text>
+      </g>
+      <g class="bar">
+        <rect width="230" height="19" y="80"></rect>
+        <text x="235" y="88" dy=".35em">23 lemons</text>
+      </g>
+    </svg>
+      */
+      const helpers = {
+        createElement: (type, attribs = [], text = null, parent = null) => {
+          if (!attribs) attribs = []
+          const element = document.createElement(type)
+          if (text) element.textContent = text
+          attribs.forEach(a => { element.setAttribute(a.name, a.val) })
+          if (parent) parent.appendChild(element)
+          return element
+        },
+        createElementNS: (type, attribs = [], text = null, parent = null) => {
+          if (!attribs) attribs = []
+          const xmlns = 'http://www.w3.org/2000/svg'
+          const element = document.createElementNS(xmlns, type)
+          if (text) element.textContent = text
+          attribs.forEach(a => { element.setAttributeNS(null, a.name, a.val) })
+          if (parent) parent.appendChild(element)
+          return element
+        },
+        numberSorterDesc: (a, b) => {
+          if (a.val < b.val) return 1
+          else if (a.val > b.val) return -1
+          else return 0
+        },
+      }
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        const data = [
+          {name:'apples',val:Math.floor(Math.random() * 30)},
+          {name:'bananas',val:Math.floor(Math.random() * 30)},
+          {name:'kiwis',val:Math.floor(Math.random() * 30)},
+          {name:'oranges',val:Math.floor(Math.random() * 50)},
+          {name:'melons',val:Math.floor(Math.random() * 30)},
+        ]
+        // get highest value and base everything else off of that
+        const copy = [...data].sort(helpers.numberSorterDesc)
+        console.log(copy[0])
+        const maxCount = copy[0].val
+
+        const parent = document.getElementById('content')
+        const figure = helpers.createElement('figure',null,null,parent)
+        const figcaption = helpers.createElement('figcaption',null,'A bar graph dynamically created',figure)
+        const svg = helpers.createElementNS('svg',[
+          {name:'class',val:'chart'},
+          {name:'width',val:'420'},
+          {name:'height',val:'150'},
+          {name:'role',val:'img'},
+        ],null,figure)
+        helpers.createElementNS('title',[{name:'id',val:'title'}],'A bar char',svg)
+        helpers.createElementNS('desc',[{name:'id',val:'desc'}],'the description',svg)
+        for (let i in data) {
+          const maxBarWidth = 250 // text length really messes this up potentially
+          const x = 45
+          const yIncrement = 20
+          let y = i * yIncrement
+          let ty = y + 8
+          const g = helpers.createElementNS('g',[{name:'class',val:'bar'}],null,svg)
+          const rectWidth = Math.floor(maxBarWidth/100 * (data[i].val/maxCount*100))
+          helpers.createElementNS('rect',[
+            {name:'width',val:`${rectWidth}`},
+            {name:'height',val:'19'},
+            {name:'y',val:`${y}`},
+          ],null,g)
+          helpers.createElementNS('text',[
+            {name:'x',val:`${rectWidth + 5}`},
+            {name:'y',val:`${ty}`},
+            {name:'dy',val:'.35em'},
+          ],`${data[i].val} ${data[i].name}`,g)
+        }
+      })
+    </script>
+  </body>
+</html>

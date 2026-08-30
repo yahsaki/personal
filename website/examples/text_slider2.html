@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      #content {
+        border: 1px solid black;
+        padding: 10px;
+        margin: 10px;
+      }
+      #text-slider {
+        width: 50%;
+        border: 1px solid red;
+        margin: 10px;
+        white-space: nowrap;
+        /*overflow: hidden;*/
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <div id="text-slider">
+        <div id="text0"></div>
+        <div id="text1"></div>
+        <div id="text2"></div>
+      </div>
+    </div>
+    <script>
+      var _ = {
+        baseSpeed: 7500,
+        m0: 8,
+        m1: 11,
+      }
+      var canvas = document.createElement("canvas")
+      var data = [
+        '0',
+        'really small text here whups',
+        'The Caterpillar and Alice looked at each other for some time in silence: at last the Caterpillar took the hookah out of its mouth, and addressed her in a languid, sleepy voice.',
+        'This is some random text typed by me on an M4800 keyboard for testing this new stuff im learning and devloping right now weeeeee.',
+      ]
+
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        /*
+          we want... to slide all the text in data infinitely?
+
+          lets do just one data point for now to implement infra
+
+          1 character width: 8px
+          base desired speed: 7500ms
+
+          I want other strings to match the speed of above
+          29 character string width: 180px
+          7500 + (29 * 8) * 11
+
+          176 char string width: 1102px
+        */
+        // width: 8px
+        animate({id:'text0',text:data[0]})
+        // width: 180px
+        // 10000 = Math.floor((180 * 100) / 1.8)
+        animate({id:'text1',text:data[1]})
+        // 1102px
+        animate({id:'text2',text:data[2]})
+      })
+      
+      function animate(args) {
+        id = args.id
+        //ms = args.ms
+        text = args.text
+        //keyframes = args.keyframes
+        const el = document.getElementById(id)
+        if (!el) {
+          console.log(`cannot animate '${id}' since it doesnt exist doop dippity`)
+          return
+        }
+        el.textContent = text
+        const textWidth = getTextWidth(el.textContent, getCanvasFont(el));
+        const ms = _.baseSpeed + (text.length * _.m0) * _.m1
+        console.log(`${id} width: ${textWidth}`)
+        el.addEventListener("animationstart", listener, false)
+        el.addEventListener("animationend", listener, false)
+        const aoi = el.animate(
+          [
+            {marginLeft: '100%',width: '300%'},
+            {marginLeft: `-${Math.floor(textWidth)}px`,width: '100%'}
+          ],
+          ms
+        )
+        aoi.onfinish = (event) => {
+          console.log('animation complete', id)
+          //document.getElementById(id).textContent = ''
+        }
+      }
+
+      function attachListener(id) {
+        const el = document.getElementById(id)
+        el.addEventListener("animationstart", listener, false)
+        el.addEventListener("animationend", listener, false)
+      }
+
+      function listener(event) {
+        console.log('e', event.type)
+        switch (event.type) {
+          case "animationstart":
+            console.log(`Started: elapsed time is ${event.elapsedTime}`)
+            break;
+          case "animationend":
+            console.log(`Ended: elapsed time is ${event.elapsedTime}`)
+            break;
+        }
+      }
+
+      function getTextWidth(text, font) {
+        const context = canvas.getContext("2d");
+        context.font = font;
+        const metrics = context.measureText(text);
+        return metrics.width;
+      }
+
+      function getCssStyle(element, prop) {
+          return window.getComputedStyle(element, null).getPropertyValue(prop);
+      }
+
+      function getCanvasFont(el = document.body) {
+        const fontWeight = getCssStyle(el, 'font-weight') || 'normal';
+        const fontSize = getCssStyle(el, 'font-size') || '16px';
+        const fontFamily = getCssStyle(el, 'font-family') || 'Times New Roman';
+        
+        return `${fontWeight} ${fontSize} ${fontFamily}`;
+      }
+    </script>
+  </body>
+</html>

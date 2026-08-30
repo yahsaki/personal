@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>website</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+    </style>
+  </head>
+  <body>
+    <p>my site</p>
+    <div id="root"></div>
+    <script>
+      const _ = {
+        articleIndex: 0,
+        articleIntervalId: null,
+      }
+      const clear = () => {
+        const root = document.getElementById('root')
+        while(root.firstChild) root.removeChild(root.firstChild)
+      }
+      const createElement = (type, attribs = [], text = null, parent = null) => {
+        const element = document.createElement(type)
+        if (text) element.textContent = text
+        attribs.forEach(a => { element.setAttribute(a.name, a.val) })
+        if (parent) parent.appendChild(element)
+        return element
+      }
+      const renderArticle = (title, content) => {
+        // should this code clear content? whatever doing it now for now
+        clear()
+        const root = document.getElementById('root')
+        createElement('p',[],title,root)
+        createElement('p',[],content,root)
+      }
+      const renderArticles = (articles) => {
+        _.articles = articles
+        _.articleIntervalId = setInterval(() => {
+          if (_.articleIndex >= (_.articles.length-1)) {
+            _.articleIndex = 0
+          }
+
+          const article = _.articles[_.articleIndex]
+          renderArticle(article.title, article.content)
+          console.log(`article ${article.title} rendered`)
+          _.articleIndex += 1
+        }, 10000)
+      }
+      const testData = {
+        articles: [
+          { title: 'Example Artcile', content: 'this is the conternt for the article that happens to be a... a sample example test thing. for some reason I didnt want to search for the lorum ipsum standard text. this is hopefully good enough for this test. yadda uyadad butt bums', },
+          { title: 'Lorum Ipsum', content: 'is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.', },
+          { title: 'actual lorum', content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.', }
+        ],
+        graphs: {
+          debtAmerica: [],
+        },
+      }
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        renderArticles(testData.articles)
+      })
+    </script>
+  </body>
+</html>

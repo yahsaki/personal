@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+  <head>
+    <title>to be delted title</title>
+    <style>
+      .container {
+        display: grid;
+        grid-template-columns: [first] auto [line2] auto [line3] auto [line4] auto [end];
+        grid-template-rows: [row1-start] auto [row1-end];
+        border: 1px solid red;
+      }
+      .item {
+        min-height: 200px;
+      }
+      .item-0 {
+        /*grid-column: 1 / span 1;
+        grid-row: row1-start / 2;
+        border: 1px solid red;*/
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="item item-0"></div>
+      <div class="item item-1"></div>
+      <div class="item item-2"></div>
+      <div class="item item-3"></div>
+
+      <div class="item item-4"></div>
+      <div class="item item-5"></div>
+      <div class="item item-6"></div>
+      <div class="item item-7"></div>
+    </div>
+    <script>
+      /*
+        so, bottom right is terminal,
+        left of terminal is tester
+        the rest are text sliders so far
+          - one slider section latest news
+          - past news, older than n
+          - slider section of whitehouse(statements)
+          - CISA
+          - CVs(did I forget teh mfuclkty name again?)
+          - TBD
+
+        that makes 8 sections. lets make em all even?
+      */
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+      })
+    </script>
+  </body>
+</html>

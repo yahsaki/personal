@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+  <head>
+    <title>to be delted title</title>
+  </head>
+  <body>
+    <div id="to be removed"></div>
+    <script>
+      var _ = {
+        mode: null,
+        test: 'poop',
+        clean: () => {
+          const head = document.querySelector('head')
+          while(head.firstChild) head.removeChild(head.firstChild)
+          const body = document.querySelector('body')
+          for (let i = 0; i < body.children.length; i++) {
+          if (body.children[i].localName !== 'script') {
+            body.children[i].remove()
+          }
+        }
+        },
+        init: () => {
+          _.clean()
+          if (typeof _.current.css === 'function') _.current.css()
+          if (typeof _.current.html === 'function') _.current.html()
+          if (typeof _.current.script === 'function') _.current.script()
+        },
+        current: {css: null, html: null, script: null},
+        load: {
+          home: null,
+        },
+      }
+    </script>
+    <script id="home" src="home.js"></script>
+    <script id="dialog" src="tools/dialog.js"></script>
+    <script>
+      /*
+        this implementation replaces html/css/logic completely when a tool is loaded, like a 
+        purge the earth kinda method. this is intended to keep modules/functionality nice and clean,
+        at the cost of potentially refetching data(to populate the home page for example). im not
+        excited about the potentially wasted IO/bandwidth.
+
+        will keep moving forward with this implementation and see where it goes. the future is a middle
+        ground between purging the earth and loading EVERYTHING at once
+
+        TODO: unload home -> load dialog -> unload dialog(on close) -> reload home
+        I guess we can always keep home/index load function in memory. still need to figure out a way
+        to load scripts without directly referencing them on the index.html page if we want to go that
+        route
+      */
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        // naming is backwards... init home, load content
+        _.load.home()
+        _.init()
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+  <head>
+    <title>to be delted title</title>
+    <style>
+      .container {
+        display: grid;
+        grid-template-columns: [first] auto [line2] auto [line3] auto [line4] auto [line5] auto [line6] auto [line7] auto [line8] auto [end];
+        grid-template-rows: [row1-start] auto [row1-end] auto [third-line] auto [last-line];
+        border: 1px solid black;
+        column-gap: 10px;
+        row-gap: 10px;
+      }
+      .item {
+        min-height: 200px;
+      }
+      .article-ts {
+        grid-column-start: line6;
+        grid-column-end: end;
+        grid-row-start: row1-start;
+        grid-row-end: third-line;
+        border: 1px solid red;
+      }
+      .tester {
+        grid-column-start: line6;
+        grid-column-end: line7;
+        grid-row-start: third-line;
+        grid-row-end: last-line;
+        border: 1px solid green;
+      }
+      .terminal {
+        grid-column-start: line7;
+        grid-column-end: end;
+        grid-row-start: third-line;
+        grid-row-end: last-line;
+        border: 1px solid blue;
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="item article-ts"></div>
+      <div class="item tester"></div>
+      <div class="item terminal"></div>
+    </div>
+    <script>
+      /*
+        so, bottom right is terminal,
+        left of terminal is tester
+        the rest are text sliders so far
+          - one slider section latest news
+          - past news, older than n
+          - slider section of whitehouse(statements)
+          - CISA
+          - CVs(did I forget teh mfuclkty name again?)
+          - TBD
+
+        that makes 8 sections. lets make em all even?
+      */
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+      })
+    </script>
+  </body>
+</html>

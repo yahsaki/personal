@@ -1,0 +1,6 @@
+@for $i from 1 through 100 {
+  .percentage-#{$i}:after {
+    $value: ($i * 1%);
+    width: $value;
+  }
+}

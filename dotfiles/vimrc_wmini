@@ -1,0 +1,60 @@
+set nocompatible
+
+"C-w+w - navigate between windows
+"gt - next tab
+"gT - previous tab
+
+
+"o - open file in a new buffer or open/close directory
+"t - open file in new tab
+"i - open file in horizontal split
+"s - open file is vertical split
+"p - go to parent directory
+"r - refresh current directory
+nnoremap <leader>n :NERDTreeFocus<CR>
+nnoremap <C-n> :NERDTree<CR>
+"two ways to toggle
+nnoremap <F2> :NERDTreeToggle<CR>
+nnoremap <C-t> :NERDTreeToggle<CR>
+nnoremap <C-f> :NERDTreeFind<CR>
+"start nerdtree on start
+autocmd VimEnter * NERDTree
+autocmd VimEnter * NERDTree | wincmd p
+
+
+"240210:  not using netrw, missing too many basic commands to make use
+let g:netrw_banner=0
+let g:netrw_browse_split=1
+let g:netrw_winsize=25
+
+"****************
+" basic config
+" ***************
+syntax on
+"idk wtf this is
+"set backspace=indent,eol,start
+set ruler
+set number
+set showcmd
+set incsearch
+set hlsearch
+set nowrap
+set cursorline
+
+set tabstop=2
+set shiftwidth=2
+set expandtab
+set smarttab
+
+set termwinsize=12x0
+set splitbelow
+set mouse=a
+
+"****************
+" remaps
+" "**************
+inoremap jj <Esc>
+vnoremap jj <Esc>
+"the ':q!' at the end doesnt work but it doesnt seem to break anything so
+"leaving it for now
+tnoremap <Esc> <C-\><C-n> :q!<CR>

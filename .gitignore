@@ -1,0 +1,6 @@
+node_modules
+website/playbox/data/
+website/homepage/*.json
+website/playbox/hydrate/*.json
+temp
+rendercv_output

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Site</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      #content {
+        border: 1px solid black;
+        padding: 10px;
+        margin: 10px;
+        display: grid;
+      }
+      #s0 {
+        grid-column: 1;
+        border: 1px solid yellow;
+      }
+      #s1 {
+        grid-column: 2;
+        border: 1px solid green;
+      }
+      #s2 {
+        grid-column: 3;
+        border: 1px solid purple;
+      }
+      #terminal-input-container {
+        display: flex;
+      }
+      #terminal-input-title {
+        flex: 1 20px;
+      }
+      #terminal-input {
+        flex: 20;
+        background-color: #222529;
+        color: white;
+      }
+      #terminal-output {
+        list-style-type: none;
+        overflow-y: auto;
+        margin: 0;
+        padding: 0;
+      }
+      #terminal-output li {
+        padding: 1px;
+        margin: 1px;
+        background-color: #43474d;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <div id="s0"></div>
+      <div id="s1">
+        <div id="terminal-input-container">
+          <span id="terminal-input-title"></span>
+          <input type="text" id="terminal-input" autofocus />
+        </div>
+        <div id="terminal-output-container">
+          <ul id="terminal-output"></ul>
+        </div>
+      </div>
+      <div id="s2"></div>
+    </div>
+    <script>
+      const _ = {
+        terminalInputId: 'terminal-input',
+        tool: {
+          CMD: {name: 'command line', code: 'CMD'},
+          KWR: {name: 'kawaru', code: 'KWR'},
+        }
+      }
+      // not bothering following phones/linux instances; ill put the input tb at the top, and
+      // append input instances below it, html style. forget trying to fight that. will be weird
+      // on mobile later tho
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        
+        document.getElementById('content').style.height = `${window.innerHeight / 1.1}px`
+
+        document.getElementById(_.terminalInputId).addEventListener('keydown', onInputKeydown)
+        // magiriwashi
+        updateTerminalTitle(_.tool.CMD.code)
+      })
+
+      function updateTerminalTitle(code) {
+        if (!_.tool[code]) throw Error(`tool '${code}' doesnt exist`)
+        document.getElementById('terminal-input-title').textContent = _.tool[code].code
+      }
+
+      function onInputKeydown(e) {
+        if (e.key !== 'Enter') return
+        if (!e.target?.value?.length) return
+        const input = e.target.value
+        console.log('val', input)
+        
+        const el = document.createElement('li')
+        el.textContent = input
+        document.getElementById('terminal-output').prepend(el)
+        
+        e.target.value = ""
+      }
+    </script>
+  </body>
+</html>

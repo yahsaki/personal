@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+  <head>
+    <title>to be delted title</title>
+  </head>
+  <body>
+    <div id="to be removed"></div>
+    <script>
+      var _ = {
+        mode: null,
+        test: 'poop',
+        clean: () => {
+          const head = document.querySelector('head')
+          while(head.firstChild) head.removeChild(head.firstChild)
+          const body = document.querySelector('body')
+          for (let i = 0; i < body.children.length; i++) {
+          if (body.children[i].localName !== 'script') {
+            body.children[i].remove()
+          }
+        }
+        },
+        init: () => {
+          _.clean()
+          if (typeof _.current.css === 'function') _.current.css()
+          if (typeof _.current.html === 'function') _.current.html()
+          if (typeof _.current.script === 'function') _.current.script()
+          if (typeof _.current.onLoad === 'function') _.current.onLoad()
+        },
+        current: {css: null, html: null, script: null},
+        load: {
+          home: null,
+        },
+        // tools go here?
+        invoke: {},
+      }
+    </script>
+    <script id="home" src="home.js"></script>
+    <script id="kawaru" src="tools/kawaru.js"></script>
+    <script>
+      /*
+        this uses the schema from /dialogs/0        
+      */
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        // naming is backwards... init home, load content
+        _.load.home()
+        _.init()
+      })
+    </script>
+  </body>
+</html>
