@@ -211,23 +211,24 @@ _.load.home = () => {
     }
     .container {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 5fr 1fr;
     }
     .item {
       box-sizing: border-box;
     }
-    .section-imageslider0 {
-      border: 1px solid orange;
-    }
-    .section-imageslider1 {
-      border: 1px solid orange;
+    .section-nabnak {
+      border: 1px solid red;
     }
     .section-tester {
       border: 1px solid green;
+      grid-column: 2;
+      grid-row: 2;
     }
     .section-terminal {
       border: 1px solid blue;
       overflow-y:auto;
+      grid-column: 2;
+      grid-row: 1;
     }
 
     #terminal-input-container {
@@ -277,7 +278,7 @@ _.load.home = () => {
       html.setAttribute('id', 'content')
       html.innerHTML = `
       <div class="container">
-        <div class="item section-tester"></div>
+        <div class="item section-nabnak"></div>
         <div class="item section-terminal">
           <div id="terminal-input-container">
             <span id="terminal-input-title"></span>
@@ -287,8 +288,7 @@ _.load.home = () => {
             <ul id="terminal-output"></ul>
           </div>
         </div>
-        <div class="item section-imageslider0">is0</div>
-        <div class="item section-imageslider1">is1</div>
+        <div class="item section-tester"></div>
       </div>
       `
       document.body.append(html)
