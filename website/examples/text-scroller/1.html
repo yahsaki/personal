@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Text Scroller #1</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      .dead {
+        width: 50%;
+        border: 1px solid green;
+        margin: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        overflow-wrap: break-word;
+        inline-size:inherit;
+      }
+      .text-scroller-container {
+        width: 50%;
+        border: 1px solid red;
+        margin: 10px;
+        display: block; 
+      }
+      .text-scroller-title {
+        position: absolute;
+        font-weight: bold;
+        font-size: 8px;
+        top: 5px;
+      }
+      .text-scroller-content {
+        word-break: break-all;
+        overflow: hidden;
+        margin: 0;
+        height: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="text-scroller-container text-scroller-0">
+      <div class="text-scroller-title">
+        2023-05-31: Amazon faces $30 million fine over Ring, Alexa privacy violations
+      </div>
+      <div class="text-scroller-content">
+        Amazon will pay $30 million in fines to settle allegations of privacy violations related to the operation of its Ring video doorbell and Alexa virtual assistant services. According to a Federal Trade Commission (FTC) complaint, the company's Ring home security camera subsidiary has been allegedly engaging in unlawful surveillance of customers and failing to prevent hackers from gaining control of users' cameras. Ring will now have to pay $5.8 million in refunds to consumers and will be barred from profiting from unlawfully obtained consumer videos. The FTC also alleges that Ring compromised its customers' privacy by granting access to private videos to its employees and contractors. It also allegedly neglected to implement basic privacy and security measures, allowing hackers to gain control of consumers' cameras and videos by breaching their accounts. \"In pursuit of rapid product development, before September 2017, Ring did not limit access to customers' video data to employees who needed the access to perform their job function (e.g., customer support, improvement of that product, etc.),\" the FTC's complaint reads. \"To the contrary, Ring gave every employee—as well as hundreds of Ukraine-based third-party contractors—full access to every customer video, regardless of whether the employee or contractor actually needed that access to perform his or her job function.\" It also highlights a specific instance where an Amazon employee viewed thousands of video recordings of female users in private spaces like bathrooms and bedrooms over several months. This incident went unnoticed by the company's security team until another employee discovered and reported it. FTC also points out that Ring failed to implement essential safeguards like multifactor authentication (MFA) until 2019, although aware of multiple credential-stuffing attacks that targeted its customers in 2017 and 2018. Furthermore, even after Ring added support for MDA, the inadequate implementation compromised their effectiveness. Fined $25 million for ignoring requests to delete children's data In a separate case, the FTC and the U.S. Department of Justice (DOJ) charged Amazon with violating children's privacy laws after failing to delete their voice recordings and geolocation information on their parents' requests. Under a proposed order, Amazon must pay $25 million and delete the children's data per their parents' requests. It will also prohibit Amazon from using children's data to train its algorithms and require deleting inactive child accounts and linked voice recordings and geolocation data. \"Amazon also failed for a significant period of time to honor parents' requests that it delete their children's voice recordings by continuing to retain the transcripts of those recordings and failing to disclose that it was doing so, also in violation of COPPA,\" the complaint reads. \"Finally, Amazon failed to delete users' voice information and geolocation information upon request and instead retained that data for its own potential use.\" In December 2022, the FTC slapped Fortnite maker Epic Games with a $245 million fine for violating children's privacy laws and using dark patterns to trick millions into making unintentional in-game purchases. Update: An Amazon spokesperson shared the following statement after the article was published: At Amazon, we take our responsibilities to our customers and their families very seriously. Our devices and services are built to protect customers’ privacy, and to provide customers with control over their experience. While we disagree with the FTC’s claims regarding both Alexa and Ring, and deny violating the law, these settlements put these matters behind us. We built Alexa with strong privacy protections and customer controls, designed Amazon Kids to comply with COPPA, and collaborated with the FTC before expanding Amazon Kids to include Alexa. As part of the settlement, we agreed to make a small modification to our already strong practices, and will remove child profiles that have been inactive for more than 18 months unless a parent or guardian chooses to keep them. Ring promptly addressed the issues at hand on its own years ago, well before the FTC began its inquiry. Our focus has been and remains on delivering products and features our customers love, while upholding our commitment to protect their privacy and security. "
+      </div>
+    </div>
+    <script>
+      // 261001: 
+      const responseData = [
+        {
+          "title": "Exploit released for RCE flaw in popular ReportLab PDF library",
+          "date": "2023-05-31T07:00:00.000Z",
+          "content": "A researcher has published a working exploit for a remote code execution (RCE) flaw impacting ReportLab Toolkit, a popular Python library used by numerous projects to generate PDF files from HTML input. The proof-of-concept (PoC) exploit for the flaw, tracked as CVE-2023-33733, was published yesterday on GitHub along with a write-up that provides technical details about the vulnerability, thus increasing the likelihood of in-the-wild exploitation. ReportLab Toolkit is used by multiple projects as a PDF library and has approximately 3.5 million monthly downloads on PyPI (Python Package Index). Bypassing old fix The problem stems from the ability to bypass sandbox restrictions on 'rl_safe_eval,' whose role is to prevent malicious code execution, leading to the attacker accessing potentially dangerous Python built-in functions. The 'rl_safe_eval' function was introduced as a measure to prevent a similar remote code execution issue that was discovered in 2019; hence the researcher focused on bypassing it. The presented PoC retrieves the built-in 'type' function that helps create a new class named 'Word,' which inherits from the 'str' class, which can bypass safety checks and give access to sensitive attributes like 'code.' Next, 'type' is called on itself to get around safe eval checks concerning argument count restrictions, allowing the attacker to abuse the original, built-in 'type' function for creating new classes and objects. This leads to constructing a malicious function from the bytecode of a compiled one, which, when executed, may perform an arbitrary action. In the researcher's example, it calls an OS command to create a file called 'exploited' in the \"/tmp/\" directory. The researcher notes that the entire exploit code must be run with eval in a single expression, so it uses the 'list comprehension' trick to structure it as such. Exploit for CVE-2023-33733 (GitHub) The Cure53 researcher, Elyas Damej, warns in his write-up that the exploitation of CVE-2023-33733 is as simple as incorporating malicious code in an HTML file that will be converted to PDF on software that uses the ReportLab library. Example of a malicious HTML triggering the flaw in xhtml2pdf (GitHub) The widespread use of the library and a public exploit puts many users at risk. Software vendors using the library can address the resulting supply chain risk by applying the available security update. Damej told BleepingComputer that the issue was reported to ReportLab's developers upon discovery, and a fix came with version 3.6.13, released on April 27, 2023. The researcher clarified that the vulnerability impacts all earlier versions of the library. "
+        },
+        {
+          "title": "Amazon faces $30 million fine over Ring, Alexa privacy violations",
+          "date": "2023-05-31T07:00:00.000Z",
+          "content": "Amazon will pay $30 million in fines to settle allegations of privacy violations related to the operation of its Ring video doorbell and Alexa virtual assistant services. According to a Federal Trade Commission (FTC) complaint, the company's Ring home security camera subsidiary has been allegedly engaging in unlawful surveillance of customers and failing to prevent hackers from gaining control of users' cameras. Ring will now have to pay $5.8 million in refunds to consumers and will be barred from profiting from unlawfully obtained consumer videos. The FTC also alleges that Ring compromised its customers' privacy by granting access to private videos to its employees and contractors. It also allegedly neglected to implement basic privacy and security measures, allowing hackers to gain control of consumers' cameras and videos by breaching their accounts. \"In pursuit of rapid product development, before September 2017, Ring did not limit access to customers' video data to employees who needed the access to perform their job function (e.g., customer support, improvement of that product, etc.),\" the FTC's complaint reads. \"To the contrary, Ring gave every employee—as well as hundreds of Ukraine-based third-party contractors—full access to every customer video, regardless of whether the employee or contractor actually needed that access to perform his or her job function.\" It also highlights a specific instance where an Amazon employee viewed thousands of video recordings of female users in private spaces like bathrooms and bedrooms over several months. This incident went unnoticed by the company's security team until another employee discovered and reported it. FTC also points out that Ring failed to implement essential safeguards like multifactor authentication (MFA) until 2019, although aware of multiple credential-stuffing attacks that targeted its customers in 2017 and 2018. Furthermore, even after Ring added support for MDA, the inadequate implementation compromised their effectiveness. Fined $25 million for ignoring requests to delete children's data In a separate case, the FTC and the U.S. Department of Justice (DOJ) charged Amazon with violating children's privacy laws after failing to delete their voice recordings and geolocation information on their parents' requests. Under a proposed order, Amazon must pay $25 million and delete the children's data per their parents' requests. It will also prohibit Amazon from using children's data to train its algorithms and require deleting inactive child accounts and linked voice recordings and geolocation data. \"Amazon also failed for a significant period of time to honor parents' requests that it delete their children's voice recordings by continuing to retain the transcripts of those recordings and failing to disclose that it was doing so, also in violation of COPPA,\" the complaint reads. \"Finally, Amazon failed to delete users' voice information and geolocation information upon request and instead retained that data for its own potential use.\" In December 2022, the FTC slapped Fortnite maker Epic Games with a $245 million fine for violating children's privacy laws and using dark patterns to trick millions into making unintentional in-game purchases. Update: An Amazon spokesperson shared the following statement after the article was published: At Amazon, we take our responsibilities to our customers and their families very seriously. Our devices and services are built to protect customers’ privacy, and to provide customers with control over their experience. While we disagree with the FTC’s claims regarding both Alexa and Ring, and deny violating the law, these settlements put these matters behind us. We built Alexa with strong privacy protections and customer controls, designed Amazon Kids to comply with COPPA, and collaborated with the FTC before expanding Amazon Kids to include Alexa. As part of the settlement, we agreed to make a small modification to our already strong practices, and will remove child profiles that have been inactive for more than 18 months unless a parent or guardian chooses to keep them. Ring promptly addressed the issues at hand on its own years ago, well before the FTC began its inquiry. Our focus has been and remains on delivering products and features our customers love, while upholding our commitment to protect their privacy and security. "
+        },
+      ]
+      function createTextScroller(args) {
+        const selector = args.selector
+        const data = args.data
+        const containerEl = document.querySelector(selector)
+        const titleEl = document.querySelector(`${selector} .text-scroller-title`)
+        const contentEl = document.querySelector(`${selector} .text-scroller-content`)
+        if (!containerEl) {
+          console.error(`failed to find element to container text scroller by selector '${selector}'`);return
+          if (!title || !content) {
+            console.error(`failed to find title(${!!titleEl}) or content(${!!contentEl}) elements`);return
+          }
+        }
+        if (!Array.isArray(data)) {
+          console.error(`data argument must be an array with properties title, date and content(required), received '${typeof data}'`);return
+        }
+        for (let i = 0; i < data.length; i++) {
+          if (!data[i].content?.length) {
+            console.error(`data point at index ${i} has no content(the only required field)`);return
+          }
+        }
+        // everything validated enough, lets create thing
+
+        let intervalId
+        let index = 0
+        animate()
+
+        function animate() {
+          // the args we need are: data to power scroller and location
+          const blob = data[index]
+          if (blob.title?.length) {
+            // TODO: trimming and potentially date support
+            titleEl.innerText = blob.title
+          }
+          contentEl.innerText = blob.content
+
+          let position = 0
+          const scrollMax = contentEl.scrollTopMax
+          const scrollPixelAmount = 1
+          const viewWidth = contentEl.clientWidth
+          const scrollSpeed = 3
+          const intervalSpan = viewWidth / scrollSpeed
+          
+          intervalId = setInterval(() => {
+            position += scrollPixelAmount
+            
+            contentEl.scrollTo({
+              top: position,
+              left: 0,
+              behavior: 'smooth'
+            })
+            console.log(`scrollMax: ${scrollMax}, position: ${position}`)
+            if (position >= scrollMax) {
+              clearInterval(intervalId)
+              console.log('interval cleared!')
+              onTextScrollerCompleted()
+            }
+          }, intervalSpan)
+        }
+        function onTextScrollerCompleted() {
+          index+=1
+          if (!data[index]) {
+            console.log(`loop completed`)
+            // restart, refresh content, etc
+
+            // restart
+            //index = 0
+            //animate()
+            return
+          }
+          animate()
+        }
+      }
+
+
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        createTextScroller({
+          data: responseData,
+          selector: '.text-scroller-0',
+        })
+      })
+    </script>
+  </body>
+</html>

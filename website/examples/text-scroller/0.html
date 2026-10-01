@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Text Scroller #0</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+      }
+      .dead {
+        width: 50%;
+        border: 1px solid green;
+        margin: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        overflow-wrap: break-word;
+        inline-size:inherit;
+      }
+      div {
+        width: 50%;
+        border: 1px solid red;
+        margin: 10px;
+        
+      }
+      p {
+        word-break: break-all;
+        overflow: hidden;
+        margin: 0;
+        height: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <p id="text">
+        PaperCut has released a second emergency security update for two actively exploited vulnerabilities in its PaperCut NG and MF print management software after researchers discovered multiple ways to bypass the initial fixes. As BleepingComputer reported yesterday, PaperCut warned that hackers were exploiting a vulnerability in zero-day attacks against customer servers and released an initial emergency patch for PaperCut NG/MF versions 25 and 26. At the time, however, the company had not disclosed CVE identifiers or technical details about the vulnerabilities, saying it was withholding information while it investigated the attacks and gave customers time to apply emergency fixes. PaperCut has now shared technical details and CVE identifiers for the two vulnerabilities, tracked as CVE-2026-82078 and CVE-2026-81578. These vulnerabilities can be chained to bypass authentication and execute code on vulnerable servers. CVE-2026-81578 is a high-severity authentication bypass vulnerability rated 8.8 that impacts the PaperCut NG/MF web management interface. \"Under specific conditions, unauthenticated remote requests targeting administrative functions can trigger backend actions prior to the completion of access validation checks,\" explains PaperCut's updated advisory. The second vulnerability, tracked as CVE-2026-82078, is a critical unsafe dynamic class-loading flaw rated 9.4 that exists in PaperCut's database connection utilities. The application loads database driver classes based on configurable driver names without validating them against an approved allowlist. \"If an attacker can manipulate system configuration parameters, this enables the execution of arbitrary Java bytecode residing on the application classpath under the security context of the PaperCut server process,\" explains PaperCut. Cybersecurity firm watchTowr, which has been working with PaperCut during the incident, said on LinkedIn that the vulnerabilities allow unauthenticated attackers to bypass authentication and gain remote code execution on affected PaperCut NG/MF instances. Second emergency patch released On Friday, PaperCut released Emergency Patch Release 2, an updated security fix that includes additional hardening developed after further analysis with its internal security team and researchers at Huntress and watchTowr. \"Following further work with our internal security team and external researchers, including Huntress and watchTowr, we have released an updated Emergency Patch (Release 2) that includes additional hardening beyond the original emergency patch,\" PaperCut said. The company is urging all customers to install Release 2 even if they already installed the first emergency patch. This second release comes after watchTowr said that its researchers fully reproduced the vulnerabilities, discovered multiple patch bypasses, and identified an additional authentication bypass vulnerability. BleepingComputer has reached out to Huntress to learn more about what its researchers found while analyzing the vulnerabilities and will update the story if we receive a response. Emergency Patch Release 2 is available for PaperCut NG and MF versions 24, 25, and 26 on Windows, Linux, and macOS. Customers running version 23 or earlier are advised to upgrade to the latest version rather than wait for a patch for those releases. PaperCut says Site Servers and secondary/print servers should also be upgraded to patched versions. Other components, like Print Deploy and Mobility Print, are not affected and do not require updates. Even though patches are available, PaperCut to urge customers to restrict access to the web interfaces to trusted IP addresses using firewall rules, network access controls, or equivalent measures. Administrators should also look for suspicious post-exploitation activity from the pc-app.exe process, missing or truncated server.log files, and the following errors in the server.log. ERROR No suitable driver found for jdbc:no:x ERROR DatabaseUtils - Database error looking up cardID: VALUES CAST The company has not disclosed who is behind the attacks or what threat actors are doing after compromising vulnerable servers. PaperCut told BleepingComputer that the attacks appear limited and targeted, and that it is withholding details about post-exploitation activity while it continues its investigation. \"Our investigation into what attackers are doing post-compromise is still active, and premature detail could complicate any affected customers' own response,\" PaperCut told BleepingComputer. \"What we can say: the bulletin advises customers to watch for intrusion-detection, endpoint, or network-monitoring alerts tied to the PaperCut Application Server, and we'll publish indicators of compromise as they're verified.\" PaperCut servers were previously targeted in 2023 after attackers began exploiting CVE-2023-27350, an authentication bypass and remote code execution vulnerability. Those attacks were ultimately linked to numerous threat actors, including the Clop and LockBit ransomware operations, Iranian state-backed hacking groups, and the Bl00dy Ransomware Gang.
+      </p>
+    </div>
+    <script>
+      // 261001: works great! will be implementing rotation on next example because I like to keep the basic implementations of things like this in this format
+      // bug: speed needs to be dynamic, need to determine how many words I can read for a given view first
+      // bug: readable content ends significantly before the interval is cleared
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('document loaded')
+        const text = document.getElementById('text')
+        text.height
+        console.log('scroll height', text.scrollHeight)
+        console.l
+        let position = 0
+        let height = text.scrollHeight
+        let scrollPixelAmount = 1
+        let intervalSpan = 140 // this value needs to be relative to the width of the view
+        let intervalId
+        
+        intervalId = setInterval(() => {
+          position += scrollPixelAmount
+          
+          document.getElementById('text').scrollTo({
+            top: position,
+            left: 0,
+            behavior: 'smooth'
+          })
+          console.log(`height: ${height}, position: ${position}`)
+          if (position >= height) {
+            clearInterval(intervalId)
+            console.log('interval cleared!')
+          }
+        }, intervalSpan)
+      })
+    </script>
+  </body>
+</html>
