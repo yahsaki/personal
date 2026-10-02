@@ -14,18 +14,25 @@ _.tool.textScroller = {
     style.setAttribute('id', `text-scroller-style-${id}`)
     style.innerText = `
 .text-scroller-container {}
+.text-scroller-row-0 {
+  display: grid;
+  grid-template-columns: 1fr 4fr;
+}
+.text-scroller-date {
+  border: 1px solid yellow;
+}
 .text-scroller-title {
-  display: none;
-  position: absolute;
+  border: 1px solid yellow;
   font-weight: bold;
   font-size: 8px;
-  top: 5px;
+  overflow: hidden;
+
 }
 .text-scroller-content {
   word-break: break-all;
-  overflow: hidden;
   margin: 0;
-  height: 30px;
+  height: 22px;
+  overflow: hidden;
 }
     `
     document.head.append(style)
@@ -89,10 +96,11 @@ _.tool.textScroller = {
       html.setAttribute('id', `text-scroller-${instance.id}`)
       html.setAttribute('class', 'text-scroller-container')
       html.innerHTML = `
-<div class="text-scroller-title">
+<div class="text-scroller-row-0">
+  <div class="text-scroller-date"></div>
+  <div class="text-scroller-title"></div>
 </div>
-<div class="text-scroller-content">
-</div>
+<div class="text-scroller-content"></div>
       `
       parentEl.append(html)
       console.log(`textScroller.fn.createTextScroller: skeleton instantiated. animating...`)
@@ -102,22 +110,31 @@ _.tool.textScroller = {
       // we have no way to stop/pause scroller at the moment, besides purging everything
       const titleEl = document.querySelector(`#text-scroller-${instance.id} .text-scroller-title`)
       const contentEl = document.querySelector(`#text-scroller-${instance.id} .text-scroller-content`)
-      if (!titleEl || !contentEl) {
-        console.error(`textScroller.fn.animate: failed to find title(${!!titleEl}) or content(${!!contentEl}) element`)
+      const dateEl = document.querySelector(`#text-scroller-${instance.id} .text-scroller-date`)
+      if (!titleEl || !contentEl || !dateEl) {
+        console.error(`textScroller.fn.animate: failed to find title(${!!titleEl}), content(${!!contentEl}) or date(${!!dateEl}) element`)
         // TODO: we should remove this scroller entirely, or something
         return
       }
 
       const blob = instance.data[instance.index]
       if (blob.title?.length) { titleEl.innerText = blob.title }
+      if (blob.date?.length) {
+        const dateObj = new Date(blob.date)
+        if (dateObj instanceof Date && !isNaN(dateObj)) {
+          dateEl.innerText = dateObj.toISOString().substring(0, 10)
+        } else {
+          dateEl.innerText = blob.date
+        }
+      }
       contentEl.innerText = blob.content
 
       let position = 0
       const scrollMax = contentEl.scrollTopMax
       const intervalSpan = contentEl.clientWidth / _.tool.textScroller.data.scrollSpeed
 
-      //console.log('document.querySelector(`#text-scroller-' + instance.id + ' .text-scroller-content`)' + `.scrollTo({top: 0, left: 0, behavior: 'smooth'})`)
-
+      console.log('document.querySelector(`#text-scroller-' + instance.id + ' .text-scroller-content`)' + `.scrollTo({top: 0, left: 0, behavior: 'smooth'})`)
+      console.log('textScroller.animate: interval span', intervalSpan)
       instance.intervalId = setInterval(() => {
         position += _.tool.textScroller.data.scrollPixelAmount
 
