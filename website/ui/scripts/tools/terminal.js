@@ -72,6 +72,8 @@ _.tool.terminal = {
     const style = document.getElementById(`terminal-style-${id}`)
     if (html) { html.remove() }
     if (style) { style.remove() }
+    _.tool.terminal.data.parentSelector = null
+    _.tool.terminal.data.id = null
     // is that it?
     console.log(`terminal.unload: removed everything probably, good luck verifying that`)
   },

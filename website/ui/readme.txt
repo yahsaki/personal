@@ -22,14 +22,18 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- BUG: text scrollers dont handle resizing after interval creation, easy fix
 - BUG: the old implementation of terminal's argument splitting did not support quoted arguments: must fix
 - need recent data for the new text scroller. get dailies up and running
 - pull CVEs manually from git repo and manually generate some consumable data from it. automate this someday
 - integrate tester
 - finish integrating terminal... to an acceptable degree
 - integrate nabnak view... up to whatever we have built... to a certain degree(what the F does this mean)
+- fix title display. currently hiding it because I goofed it with absolute positioning in a setup like this. dont
+  want to gut it completely at this point
 
 completed:
-- design how base, views and tools interact with each other
-- set up layout
+- text scroller module implemented
 - build replacement for text slider
+- set up layout
+- design how base, views and tools interact with each other
