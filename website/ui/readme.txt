@@ -20,3 +20,16 @@ it needs to be done unfortunately
 questions:
 - can we put nabnak server in a single file? the heaviest part is validating the post body. ah well auth
   too... but thats a later thing. I think we can make this a single file
+
+todo:
+- BUG: the old implementation of terminal's argument splitting did not support quoted arguments: must fix
+- need recent data for the new text scroller. get dailies up and running
+- pull CVEs manually from git repo and manually generate some consumable data from it. automate this someday
+- integrate tester
+- finish integrating terminal... to an acceptable degree
+- integrate nabnak view... up to whatever we have built... to a certain degree(what the F does this mean)
+
+completed:
+- design how base, views and tools interact with each other
+- set up layout
+- build replacement for text slider

@@ -36,12 +36,6 @@
         // pondered naming this the same as other views/tools but it doesnt have to be, and its probably better
         // that the base's setup fn is named/setup differently anyway
         _.fn.buildBase()
-        // im going to opt for manually loading the tools instead of letting them load themselves when the script is
-        // initialized. lets even tell it where to install itself
-        _.tool.terminal.load('.base-section-terminal')
-        setTimeout(() => {
-          _.tool.terminal.unload()
-        }, 1000)
       })
     </script>
   </body>
