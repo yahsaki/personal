@@ -124,11 +124,13 @@
             // restart, refresh content, etc
 
             // restart
-            //index = 0
-            //animate()
-            return
+            setTimeout(() => {
+              index = 0
+              animate()
+            }, 3000)
+          } else {
+            animate()
           }
-          animate()
         }
       }
 

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head></head>
+  <body>
+    <script>
+      var _ = {
+        currentMode: null,
+        currentView: null,
+        view: {},
+        tool: {},
+        // most functions initialized in scripts/base.js
+        fn: {},
+      }
+    </script>
+    <script id="script-base" src="scripts/base.js"></script>
+    <script id="script-view-home" src="scripts/views/home.js"></script>
+    <script id="script-view-nabnak" src="scripts/views/nabnak.js"></script>
+    <script id="script-tool-terminal" src="scripts/tools/terminal.js"></script>
+    <script id="script-tool-text_scroller" src="scripts/tools/text_scroller.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.location.protocol === 'file:') {
+          const body = document.querySelector('body')
+          for (let i = 0; i < body.children.length; i++) {
+            if (body.children[i].localName !== 'script') {
+              body.children[i].remove()
+            }
+          }
+          const el = document.createElement('span')
+          el.setAttribute('style', 'font-size:100px;font-weight:bold;color:red;')
+          el.innerText = "USE HTTP SERVER!"
+          body.appendChild(el)
+          return
+        }
+
+        // pondered naming this the same as other views/tools but it doesnt have to be, and its probably better
+        // that the base's setup fn is named/setup differently anyway
+        _.fn.buildBase()
+        // im going to opt for manually loading the tools instead of letting them load themselves when the script is
+        // initialized. lets even tell it where to install itself
+        _.tool.terminal.load('.base-section-terminal')
+        setTimeout(() => {
+          _.tool.terminal.unload()
+        }, 1000)
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+_.view.nabnak = {
+  load: () => {
+    
+  }
+}
