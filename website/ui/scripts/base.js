@@ -59,14 +59,14 @@ html {
 }
 .base-section-content {
   border: 1px solid red;
-  grid-column: 1 / 16;
+  grid-column: 1 / 15;
   grid-row: 1 / 18;
 }
 .base-section-terminal {
   border: 1px solid blue;
   overflow-y:auto;
-  grid-column: 16 / 20;
-  grid-row: 1 /16;
+  grid-column: 15 / 20;
+  grid-row: 1 / 16;
 }
 .text-scroller {
   height: 42px;
@@ -77,12 +77,12 @@ html {
   grid-row: 18 / 20;
 }
 .base-section-text-scroller1 {
-  grid-column: 8 / 16;
+  grid-column: 8 / 15;
   grid-row: 18 / 20;
 }
 .base-section-tester {
   border: 1px solid green;
-  grid-column: 16 / 20;
+  grid-column: 15 / 20;
   grid-row: 16 / 20;
 }
   `

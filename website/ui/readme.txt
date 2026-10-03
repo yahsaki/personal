@@ -38,6 +38,7 @@ todo:
 
 
 completed:
+- 261002: renamed _.tool and _.view as _.module
 - 261002: need recent data for the new text scroller. get dailies up and running
 - BUG: text scrollers dont handle resizing after interval creation, easy fix
   - 261002: it changes speed on every loop which is good enough

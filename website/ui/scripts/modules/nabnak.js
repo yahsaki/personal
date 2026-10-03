@@ -6,6 +6,9 @@ _.module.nabnak = {
     const parentEl = document.querySelector(selector)
     if (!parentEl) { throw Error(`nabnak.load: failed to find parent element via selector '${selector}'`) }
 
+    const module = { name: 'nabnak', displayName: 'nabnak', code: 'NBK' }
+    if (_.module.terminal) { _.module.terminal.data.module[module.name] = module }
+
     const data = _.module.nabnak.data
     data.parentSelector = selector
 
@@ -21,12 +24,22 @@ _.module.nabnak = {
 
     const html = document.createElement('div') 
     html.setAttribute('class', 'nabnak-container')
+    // wait a min... wtf is the html supposed to even be at this point?
   },
   unload: () => {},
-  fn: {},
+  fn: {
+    render: {
+      projects: () => {},
+      project: (projectId) => {}
+    }
+  },
   data: {
     parentSelector: null,
     // damn man I hate always doing data.data but .projects is a child prop of what I need
-    data: {},
+    data: {
+      date_updated: null,
+      version: null,
+      projects: []
+    },
   },
 }

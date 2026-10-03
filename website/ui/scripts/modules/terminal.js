@@ -129,31 +129,31 @@ _.module.terminal = {
       else { console.error(`cant add unknown thing to terminal`) }
       outputEl.prepend(li)
     },
-    updateCurrentModule: (code) => {
+    updateCurrentModule: (name) => {
       const module = _.module.terminal.data.module
-      if (!code) {
-        code = module.CMD.code
-        _.module.terminal.data.currentMode = code
+      if (!name) {
+        name = module.terminal.name
+        _.module.terminal.data.currentMode = name
       }
-      if (!_.module[module[code].name]) { throw Error(`unknown tool code '${code}'`) }
+      if (!_.module[name]) { throw Error(`unknown module name '${name}'`) }
       const titleEl = document.querySelector(_.module.terminal.data.titleSelector)
       if (!titleEl) { throw Error(`terminal title element missing for selector '${_.module.terminal.data.titleSelector}'`) }
 
-      console.log(`switching mode to '${code}'(${module[code].displayName || module[code].name})`)
-      _.module.terminal.data.currentMode = code
-      titleEl.innerText = code
+      console.log(`switching mode to '${module[name].displayName || name}'`)
+      _.module.terminal.data.currentMode = name
+      titleEl.innerText = module[name].code
     },
     onInputKeyDown: (e) => {
       console.log('hit', e.key)
       const module = _.module.terminal.data.module
       const currentMode = _.module.terminal.data.currentMode
-      if (currentMode !== module.CMD.code) {
+      if (currentMode !== module.terminal.name) {
         if (e.key === 'Escape') {
-          if (typeof _.module[module[code].name]?.fn?.cleanup === 'function') {
-            _.module[module[code].name]?.fn?.cleanup()
+          if (typeof _.module[currentMode]?.fn?.cleanup === 'function') {
+            _.module[currentMode]?.fn?.cleanup()
           }
-          // magiriwashi no namae desu ne, 'module.CMD.code'
-          _.module.terminal.fn.updateCurrentModule(module.CMD.code)
+          // magiriwashi no namae desu ne, 'module.terminal.name'
+          _.module.terminal.fn.updateCurrentModule(module.terminal.name)
           _.module.terminal.fn.prepend('switched to command mode')
         }
       }
@@ -168,7 +168,7 @@ _.module.terminal = {
       console.log('terminal.fn.handleInput: input', input)
       const currentMode = _.module.terminal.data.currentMode
       const module = _.module.terminal.data.module
-      if (currentMode !== module.CMD.code) {
+      if (currentMode !== module.terminal.name) {
         console.log('terminal.fn.handleInput: TODO: support piping input to other tools')
         return
       }
@@ -192,7 +192,7 @@ _.module.terminal = {
     // not in love with this naming convention
     module: {
       // every tool that loads needs to put their code here if applicable(text scroller not applicable yet)
-      CMD: {name: 'terminal', displayName: 'command line', code: 'CMD'}
+      terminal: {name: 'terminal', displayName: 'command line', code: 'CMD'}
     },
   },
 }
