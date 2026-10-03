@@ -409,6 +409,10 @@ _.module.terminal = {
         _.logger.rehydrate()
         // submit results to caller
         _.form.current.callback(_.form.current.fields)
+        // this should be green but whatever
+        _.logger.log(`form successfully submitted ＼（＾０＾）ノ,`)
+        // purge current
+        _.form.current = null
       }
     },
     onCancel: () => {
