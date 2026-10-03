@@ -22,9 +22,13 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
-- BUG: text scrollers dont handle resizing after interval creation, easy fix
+- add 'killall' command that literally deletes everything, would be funny
+- add settings that save to browserdb
+  - show debug output
+- music player!
+- need to implement a way for other tools to output logs to terminal. a smidge harder now that its not baked into the
+  view as before
 - BUG: the old implementation of terminal's argument splitting did not support quoted arguments: must fix
-- need recent data for the new text scroller. get dailies up and running
 - pull CVEs manually from git repo and manually generate some consumable data from it. automate this someday
 - integrate tester
 - finish integrating terminal... to an acceptable degree
@@ -32,8 +36,16 @@ todo:
 - fix title display. currently hiding it because I goofed it with absolute positioning in a setup like this. dont
   want to gut it completely at this point
 
+
 completed:
+- 261002: need recent data for the new text scroller. get dailies up and running
+- BUG: text scrollers dont handle resizing after interval creation, easy fix
+  - 261002: it changes speed on every loop which is good enough
 - text scroller module implemented
 - build replacement for text slider
 - set up layout
 - design how base, views and tools interact with each other
+
+how commands should work:
+  before this, you would type 'kawaru' to change cli into kawaru mode, tester to do '???' and thats about it. views
+  didnt exist

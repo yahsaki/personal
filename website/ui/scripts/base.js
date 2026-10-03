@@ -88,16 +88,16 @@ html {
   `
   document.head.append(style)
 
-  // this assumes .html was already executed
-  document.querySelector('.base-container').setAttribute('style', `height:${window.innerHeight - 20}px;`)
+  // 261002: this has no affect on the child elements
+  /*document.querySelector('.base-container').setAttribute('style', `height:${window.innerHeight - 20}px;`)
   window.addEventListener('resize', () => {
     // TODO: fix this dupe code. also we need to be able to unbind this if home is ever unloaded
     document.querySelector('.base-container').setAttribute('style', `height:${window.innerHeight - 20}px;`)
   })
+  */
 
   // im going to opt for manually loading the tools instead of letting them load themselves when the script is
   // initialized. lets even tell it where to install itself
-
   if (_.tool.terminal) {
     _.tool.terminal.load('.base-section-terminal')
     //setTimeout(() => { _.tool.terminal.unload() }, 1000)
@@ -133,7 +133,8 @@ html {
       },
     ]
     _.tool.textScroller.load()
-    _.tool.textScroller.fn.createTextScroller('.base-section-text-scroller0', data)
+    // this line is working, just keeping cli output silent
+    //_.tool.textScroller.fn.createTextScroller('.base-section-text-scroller0', data)
   } else {
     console.log(`terminal.buildBase: textScroller tool not loaded`)
   }

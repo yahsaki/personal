@@ -9,7 +9,40 @@
         view: {},
         tool: {},
         // most functions initialized in scripts/base.js
-        fn: {},
+        fn: {
+          // TODO: move to base.js or some util file
+          delay: ms => new Promise((resolve => setTimeout(() => resolve(), ms))),
+          createElement: (type, attribs = [], text = null, parent = null) => {
+            const element = document.createElement(type)
+            if (text) element.textContent = text
+            attribs.forEach(a => { element.setAttribute(a.name, a.val) })
+            if (parent) parent.appendChild(element)
+            return element
+          },
+          trigger: (el, eventType) => {
+            if (typeof eventType === 'string' && typeof el[eventType] === 'function') {
+              el[eventType]()
+            } else {
+              const event =
+                typeof eventType === 'string'
+                  ? new Event(eventType, {bubbles: true})
+                  : eventType
+              el.dispatchEvent(event)
+            }
+          },
+          shuffle: (array) => {
+            let currentIndex = array.length, temporaryValue, randomIndex
+            while (0 !== currentIndex) {
+              randomIndex = Math.floor(Math.random() * currentIndex)
+              currentIndex -= 1
+
+              temporaryValue = array[currentIndex]
+              array[currentIndex] = array[randomIndex]
+              array[randomIndex] = temporaryValue
+            }
+            return array
+          },
+        },
       }
     </script>
     <script id="script-base" src="scripts/base.js"></script>
