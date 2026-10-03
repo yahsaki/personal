@@ -8,6 +8,14 @@ _.fn.clean = () => {
     }
   }
 }
+_.fn.clear = (selector) => {
+  const el = document.querySelector(selector)
+  if (!el) {
+    _.logger.log(`fn.clear: failed to find element via selector '${selector}'`,_.logger.level.error);return
+  }
+  el.replaceChildren()
+  _.logger.log(`fn.clear: element via selector '${selector}' cleared`,_.logger.level.debug)
+}
 _.fn.load = (viewName) => {
   console.log(`_.fn.load: attempting to load view '${viewName}'`)
   if (!_.view[viewName]) {
@@ -29,7 +37,19 @@ _.fn.updateTitle = (text) => {
 }
 _.logger = {
   log: (text, level, blob) => { console.log(`default logger: ${text}`, level, blob) },
+  rehydrate: () => {},
   level: { debug: 'debug', info: 'info', warn: 'warn', error: 'error' }
+}
+// same as logger above, I dont want any module to directly call a different module so I have to put this here
+_.form = {
+  validate: () => { throw Error('unimplemented') },
+  render: () => { throw Error('unimplemented') },
+  onSubmit: () => { throw Error('unimplemented') },
+  onCancel: () => {throw Error('unimplemented') },
+  schema: {
+    inputField: { type:'text/number', required:false },
+    enumField: { type:'list', required:true, options:[] }
+  }
 }
 _.storage.get = (key) => {
   const string = localStorage.getItem(key)
@@ -87,7 +107,6 @@ html {
 .base-container {
   display: grid;
   grid-template-columns: repeat(19, minmax(50px, auto));
-  grid-auto-rows: 10px;
   border 1px solid black;
   column-gap: 2px;
   row-gap: 2px;
@@ -136,12 +155,29 @@ html {
   document.head.append(style)
 
   // 261002: this has no affect on the child elements
-  /*document.querySelector('.base-container').setAttribute('style', `height:${window.innerHeight - 20}px;`)
+  //document.querySelector('.base-container').setAttribute('style', `height:${window.innerHeight - 20}px;`)
+
+  /*
+    as of 261003:
+    content is 80% of full width
+    scrollers are the last 20%
+    terminal is 70%
+    tester is %30
+  */
+  document.querySelector('.base-section-content').setAttribute('style', `height:${window.innerHeight / 100 * 80}px;`)
+  //document.querySelector('.base-section-text-scroller0').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
+  //document.querySelector('.base-section-text-scroller1').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
+  document.querySelector('.base-section-terminal').setAttribute('style', `height:${window.innerHeight / 100 * 60}px;`)
+  document.querySelector('.base-section-tester').setAttribute('style', `height:${window.innerHeight / 100 * 30}px;`)
   window.addEventListener('resize', () => {
     // TODO: fix this dupe code. also we need to be able to unbind this if home is ever unloaded
-    document.querySelector('.base-container').setAttribute('style', `height:${window.innerHeight - 20}px;`)
+    document.querySelector('.base-section-content').setAttribute('style', `height:${window.innerHeight / 100 * 80}px;`)
+    //document.querySelector('.base-section-text-scroller0').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
+    //document.querySelector('.base-section-text-scroller1').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
+    document.querySelector('.base-section-terminal').setAttribute('style', `height:${window.innerHeight / 100 * 60}px;`)
+    document.querySelector('.base-section-tester').setAttribute('style', `height:${window.innerHeight / 100 * 30}px;`)
   })
-  */
+  
 
   // im going to opt for manually loading the tools instead of letting them load themselves when the script is
   // initialized. lets even tell it where to install itself
@@ -149,8 +185,14 @@ html {
     _.module.terminal.load('.base-section-terminal')
     //setTimeout(() => { _.module.terminal.unload() }, 1000)
     if (_.module.terminal.logger && typeof _.module.terminal.logger.log === 'function') {
+      // im not replacing the whole logger since the level prop only lives there
       _.logger.log = _.module.terminal.logger.log
+      _.logger.rehydrate = _.module.terminal.logger.rehydrate
       _.logger.log('logger set to terminal')
+    }
+    if (_.module.terminal.form) {
+      _.form = _.module.terminal.form
+      _.logger.log('form set to terminal')
     }
   } else {
     console.log(`terminal.buildBase: terminal tool not loaded`)

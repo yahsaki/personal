@@ -98,12 +98,7 @@ _.module.terminal = {
     // pondering placing this in root of tool
     command: {
       clear: (args) => {
-        const outputEl = document.querySelector(_.module.terminal.data.outputSelector)
-        if (!outputEl) {
-          throw Error(`failed to find terminal output element by selector '${_.module.terminal.data.outputSelector}'`)
-        }
-        outputEl.replaceChildren()
-        console.log('terminal.fn.command.clear: terminal cleared')
+        _.fn.clear(_.module.terminal.data.outputSelector)
       },
       help: (args) => {
         _.module.terminal.fn.prepend(
@@ -127,6 +122,7 @@ _.module.terminal = {
         _.logger.log('got data',_.logger.level.debug,data)
       }
     },
+    // I would like to combine these but im not going to do that yet
     prepend: (val) => {
       if (!val) { console.error(`attempted to prepend null(or false) val to terminal output`);return }
       const outputEl = document.querySelector(_.module.terminal.data.outputSelector)
@@ -138,6 +134,18 @@ _.module.terminal = {
       else { console.error(`cant add unknown thing to terminal`) }
       outputEl.prepend(li)
     },
+    // in testing, only used by logger rehydrate at the moment(going for real fast solution)
+    append: (val) => {
+      if (!val) { console.error(`attempted to prepend null(or false) val to terminal output`);return }
+      const outputEl = document.querySelector(_.module.terminal.data.outputSelector)
+      if (!outputEl) { throw Error(`terminal output element missing for selector '${_.module.terminal.data.outputSelector}'`) }
+
+      const li = document.createElement('li')
+      if (typeof val === 'string') { li.textContent = val }
+      else if (val instanceof HTMLElement) { li.append(val) }
+      else { console.error(`cant add unknown thing to terminal`) }
+      outputEl.append(li)
+    },
     updateCurrentModule: (name) => {
       const module = _.module.terminal.data.module
       if (!name) {
@@ -148,7 +156,7 @@ _.module.terminal = {
       const titleEl = document.querySelector(_.module.terminal.data.titleSelector)
       if (!titleEl) { throw Error(`terminal title element missing for selector '${_.module.terminal.data.titleSelector}'`) }
 
-      console.log(`switching mode to '${module[name].displayName || name}'`)
+      _.logger.log(`switching mode to '${module[name].displayName || name}'`)
       _.module.terminal.data.currentMode = name
       titleEl.innerText = module[name].code
     },
@@ -240,35 +248,176 @@ _.module.terminal = {
         }
         level = _.logger.level.info
 
-        _.module.terminal.data.logs.push({ date: new Date().toISOString(), text })
+        // I dont see the point of this code, removing for now
+        //_.module.terminal.data.logs.push({ date: new Date().toISOString(), text })
         // treat the log as 'info'
-        if (blob) { console.log(text, blob) }
-        else { console.log(text) }
-        _.module.terminal.fn.prepend(text)
-        return
+        //if (blob) { console.log(text, blob) }
+        //else { console.log(text) }
+        //_.module.terminal.fn.prepend(text)
+        //return
       }
+
       // TODO: change the color depending on the level
       _.module.terminal.data.logs.push({ date: new Date().toISOString(), text, level })
       const string = `[${level}]:${text}`
       if (blob) { console.log(string, blob) }
       else { console.log(string) }
+      // lets disable debug logs going to terminal module for now
+      if (level === _.logger.level.debug) {
+        return
+      }
       const spanEl = document.createElement('span')
       spanEl.setAttribute('class', `loglevel-${level}`)
       spanEl.innerText = text
       _.module.terminal.fn.prepend(spanEl)
     },
     // redisplay logs in terminal. great when terminal was hijacked then returned
-    rehydrate: () => {}
+    rehydrate: () => {
+      // lets only render the last 100 logs
+      let count = 0
+      for (let i = _.module.terminal.data.logs.length - 1; i >= 0; i--) {
+        if (count === 100) { break }
+        const log = _.module.terminal.data.logs[i]
+        if (log.level !== _.logger.level.debug) {
+          const spanEl = document.createElement('span')
+          spanEl.setAttribute('class', `loglevel-${log.level}`)
+          spanEl.innerText = log.text
+          _.module.terminal.fn.append(spanEl)
+          count += 1
+        }
+      }
+    }
   },
   // yeah lets stuff the form logic in the root of terminal
+  // I just realized form/logger can stand on their own if we just give them a parent selector. it gets weird when they
+  // both operate in the same element though(logs coming in while form displayed, unhandled). the idea is to show the logs
+  // below the form, but I think we should just ignore terminal logs once the form workflow is completed. we still add
+  // the logs to an array(which needs to be truncated, adding that task)
   form: {
-    validate: () => {},
-    render: () => {},
-    onSubmit: () => {},
-    onCancel: () => {},
+    checkForTagDupes: (tags = []) => {
+      const duplicates = []
+      const checkedTags = []
+      for (let i = 0; i < tags.length; i++) {
+        const duplicate = checkedTags.find(x => x.toLowerCase() === tags[i].toLowerCase())
+        if (duplicate) { duplicates.push(duplicate)}
+        checkedTags.push(tags[i])
+      }
+      return duplicates
+    },
+    validate: () => {
+      const errors = []
+      for (let prop in _.form.current.fields) {
+        const field = _.form.current.fields[prop]
+        if (field.type === 'text' || field.type === 'tags') {
+          if (field.required && !field.value?.length) {
+            errors.push(`field '${prop}' required`)
+          }
+        }
+
+        if (field.type === 'tags' && field.value?.length) {
+          //const tags = []
+          //const untrimmedTags = field.value.toLowerCase().split(',')
+          //for (let i in untrimmedTags) { tags.push(untrimmedTags[i].trim()) }
+          const tags = field.value.split(',')
+          const dupes = _.form.checkForTagDupes(tags)
+          if (dupes.length) {
+            errors.push(`field '${prop}' has duplicate tags '${dupes.join(', ')}'`)
+          }
+          if (tags.find(x => !x.length) === '') {
+            errors.push(`tags must not be empty`)
+          }
+        }
+      }
+
+      return errors
+    },
+    render: () => {
+      // called when the html is built, I guess
+      
+      // going to attempt to do this without event listeners
+      const formEl = document.createElement('div')
+      formEl.setAttribute('class', 'terminal-form-container')
+      _.fn.createElement('p',[{name:'onclick',val:'_.form.onCancel()'}],`form: ${_.form.current.title}`,formEl)
+      _.fn.createElement('button',[{name:'onclick',val:'_.form.onCancel()'}],'cancel',formEl)
+      _.fn.createElement('button',[{name:'onclick',val:'_.form.onSubmit()'}],'submit',formEl)
+      _.fn.createElement('br',[],null,formEl)
+      for (let prop in _.form.current.fields) {
+        const field = _.form.current.fields[prop]
+        _.fn.createElement('span',[],`${prop}: `,formEl)
+        // I want some way to auto update the _.current form on change. lets do that
+        if (field.type === 'text' || field.type === 'tags') {
+          if (!field.value) { field.value = ''}
+          const input = _.fn.createElement('input',[
+            {name:'type',val:'text'},
+            {name:'data-name',val:prop}, // being used to map html element to js object
+            {name:'class',val:`form-${prop}`}, // worthless at teh moment
+            {name:'value',val:field.value},
+            {name:'oninput',val:`_.form.onFieldChange('${prop}')`}// works!
+          ],null,formEl)
+          //input.addEventListener('input', _.form.onFieldChange)
+        }
+        _.fn.createElement('br',[],null,formEl)
+      }
+      _.fn.createElement('br',[],null,formEl)
+      _.fn.createElement('button',[{name:'onclick',val:'_.form.onCancel()'}],'cancel',formEl)
+      _.fn.createElement('button',[{name:'onclick',val:'_.form.onSubmit()'}],'submit',formEl)
+      // so far this is the only line I need to replace to make this its own thing(plus add more logic of course)
+      _.module.terminal.fn.prepend(formEl)
+    },
+    load: (args) => {
+      // I dont know how to validate form schemas yet so I aint
+
+      // rush job, could definitely lose something this way
+      _.form.current = {
+        title: args.title,
+        // I only have a .fields prop in form so far, please note this truncation if this changes
+        fields: args.form.fields,
+        callback: args.callback,
+        callbackName: args.callbackName,
+      }
+      _.form.render()
+    },
+    onFieldChange: (propertyName) => {
+      _.logger.log(`field changed`,_.logger.level.debug, propertyName)
+      const field = _.form.current.fields[propertyName]
+      const el = document.querySelector(`.form-${propertyName}`)
+      if (field.type === 'tags') {
+        field.value = el.value.replaceAll(' ','')
+      } else {
+        field.value = el.value
+      }
+    },
+    onSubmit: () => {
+      _.logger.log(`form.onSubmit: called`,_.logger.level.debug)
+      console.log(JSON.stringify(_.form.current.fields))
+      console.log(_.module.terminal.data.logs)
+
+      const errors = _.form.validate()
+      if (errors.length) {
+        // log errors
+        _.logger.log(errors.join(', '),_.logger.level.error)
+        // clear terminal
+        _.fn.clear(_.module.terminal.data.outputSelector)
+        // rehydrate logs
+        _.logger.rehydrate()
+        // rerender form
+        _.form.render()
+      } else {
+        // clear terminal
+        _.fn.clear(_.module.terminal.data.outputSelector)
+        // rehydrate logs
+        _.logger.rehydrate()
+        // submit results to caller
+        _.form.current.callback(_.form.current.fields)
+      }
+    },
+    onCancel: () => {
+      _.logger.log(`form.onCancel: called`,_.logger.level.debug)
+    },
     schema: {
       inputField: { type:'text/number', required:false },
       enumField: { type:'list', required:true, options:[] }
-    }
+    },
+    current: null,
   },
 }

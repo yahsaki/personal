@@ -22,6 +22,10 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- truncate logs(after 1000 or so)
+- videos! will need to be hard subbed
+- R&D changing all modules into classes for proper isolation of vars/fns.
+- break out logger and form into their own plugins when the time is right
 - add a status bar to the top(or wherever) of the site that shows statuses of things. I forget the first status that
   we would want some indication of so just aggregate all ideas here
 - create fn to download storage data as json
@@ -69,3 +73,10 @@ notes:
 how commands should work:
   before this, you would type 'kawaru' to change cli into kawaru mode, tester to do '???' and thats about it. views
   didnt exist
+
+form workflow(in this example lets use create project):
+- from a completely clean setup, user enters command 'nabnak create project'
+- terminal handles input, sees that the 'nabnak' module exists and forwards the call
+- nabnak handles the forwarded input, maps ['create', 'project'] to fn.command.create.project() rudamentarily
+- create.project() passes the project form and a callback to _.form.load(back to terminal lol)
+- 
