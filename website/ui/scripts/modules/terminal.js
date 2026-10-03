@@ -64,7 +64,7 @@ _.module.terminal = {
       //document.querySelector(_.module.terminal.data.containerSelector).setAttribute('style', `height:${window.innerHeight - 20}px;`)
     })
     _.module.terminal.fn.updateCurrentModule()
-    console.log('terminal.load: load complete')
+    _.logger.log('terminal.load: load complete')
   },
   unload: () => {
     const selector = _.module.terminal.data.parentSelector
@@ -118,13 +118,13 @@ _.module.terminal = {
         )
       },
       save: (args) => {
-        _.logger.log('save test')
+        _.logger.log('save test',_.logger.level.debug)
         _.storage.save('save-test', {date: new Date().toISOString()})
       },
       get: (args) => {
-        _.logger.log('get saved data test')
+        _.logger.log('get saved data test',_.logger.level.debug)
         const data = _.storage.get('save-test')
-        _.logger.log('got data',null,data)
+        _.logger.log('got data',_.logger.level.debug,data)
       }
     },
     prepend: (val) => {
@@ -153,7 +153,7 @@ _.module.terminal = {
       titleEl.innerText = module[name].code
     },
     onInputKeyDown: (e) => {
-      console.log('hit', e.key)
+      //console.log('hit', e.key)
       const module = _.module.terminal.data.module
       const currentMode = _.module.terminal.data.currentMode
       if (currentMode !== module.terminal.name) {
@@ -177,13 +177,28 @@ _.module.terminal = {
       console.log('terminal.fn.handleInput: input', input)
       const currentMode = _.module.terminal.data.currentMode
       const module = _.module.terminal.data.module
+      
       if (currentMode !== module.terminal.name) {
-        console.log('terminal.fn.handleInput: TODO: support piping input to other tools')
-        return
+        // we dont need command split out in this situation. need that command parsing
+        let args = input.split(' ')
+        // not validating module existence atm but I am writing a comment about not doing so for some reason
+        _.module[currentMode].fn.handleInput(args);return
       }
-
+      
+      // remember this doesnt support quoted arguments with spaces in it, need fixing
       const args = input.split(' ')
       const command = args.splice(0, 1)[0]
+      // if the command starts with a module name, let that module handle it
+      if (_.module[command]) {
+        if (!args.length) {
+          // switch the current module
+          _.module.terminal.fn.updateCurrentModule(command);return
+        } else {
+          // dont switch the module just send that module the command
+          _.module[command].fn.handleInput(args);return
+        }
+      }
+      // fallback to terminal's built in commands
       if (!_.module.terminal.fn.command[command]) {
         _.module.terminal.fn.prepend(`command '${command}' not found`);return
       }
@@ -223,6 +238,8 @@ _.module.terminal = {
           // user sent a level value thats not one of the enum values. they probably sent a blob here
           console.log(`caller sent a non enum value in the level argument. the log was probably constructed incorrectly`, level)
         }
+        level = _.logger.level.info
+
         _.module.terminal.data.logs.push({ date: new Date().toISOString(), text })
         // treat the log as 'info'
         if (blob) { console.log(text, blob) }
@@ -232,9 +249,16 @@ _.module.terminal = {
       }
       // TODO: change the color depending on the level
       _.module.terminal.data.logs.push({ date: new Date().toISOString(), text, level })
-      console.log(text, level, blob)
-      _.module.terminal.fn.prepend(text)
-    }
+      const string = `[${level}]:${text}`
+      if (blob) { console.log(string, blob) }
+      else { console.log(string) }
+      const spanEl = document.createElement('span')
+      spanEl.setAttribute('class', `loglevel-${level}`)
+      spanEl.innerText = text
+      _.module.terminal.fn.prepend(spanEl)
+    },
+    // redisplay logs in terminal. great when terminal was hijacked then returned
+    rehydrate: () => {}
   },
   // yeah lets stuff the form logic in the root of terminal
   form: {

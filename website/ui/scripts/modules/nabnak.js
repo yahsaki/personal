@@ -12,22 +12,21 @@ _.module.nabnak = {
     const data = _.module.nabnak.data
     data.parentSelector = selector
 
-    // TODO: move this logic to a global fn
-    let title = document.querySelector('title')
-    if (title) { title.innerText = 'YAHSAKI | NABNAK' }
-    else {
-      title = document.createElement('title')
-      title.innerText = 'YAHSAKI | NABNAK'
-      document.head.append(title)
-    }
-    // end logic
+    _.fn.updateTitle('NABNAK')
 
-    const html = document.createElement('div') 
-    html.setAttribute('class', 'nabnak-container')
     // wait a min... wtf is the html supposed to even be at this point?
+    const html = document.createElement('div')
+    html.setAttribute('class', 'nabnak-container')
+    
+    _.logger.log('nabnak.load: load complete')
   },
   unload: () => {},
   fn: {
+    save: () => {
+      const string = JSON.stringify(_.module.nabnak.data.projects)
+      _.storage.save(_.module.nabnak.data.storageKey, string)
+      _.logger.log('nabnak.fn.save: projects saved')
+    },
     // not sold on fn.render pattern yet
     render: {
       projects: () => {},
@@ -38,6 +37,9 @@ _.module.nabnak = {
       help: () => {},
       // delete project data from browser storage
       wipe: () => {},
+    },
+    handleInput: (args) => {
+      _.logger.log('nabnak.handleInput: unimplemented',_.logger.level.debug,args)
     }
   },
   // not sure where to put workflows
@@ -59,6 +61,7 @@ _.module.nabnak = {
     }
   },
   data: {
+    storageKey: 'nabnak-projects',
     parentSelector: null,
     // damn man I hate always doing data.data but .projects is a child prop of what I need
     data: {

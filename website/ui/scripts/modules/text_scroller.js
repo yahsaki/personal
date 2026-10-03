@@ -36,7 +36,7 @@ _.module.textScroller = {
 }
     `
     document.head.append(style)
-    console.log(`textScroller.load: load complete`)
+    _.logger.log(`textScroller.load: load complete`)
   },
   unload: () => {
     // hmmmmm not liking the confusion here. we can remove a text scroller and we can unload the module/tool. unloading

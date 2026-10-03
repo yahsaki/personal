@@ -1,6 +1,6 @@
 node_modules
 website/playbox/data/
-website/homepage/*.json
+website/ui/*.json
 website/playbox/hydrate/*.json
 temp
 rendercv_output

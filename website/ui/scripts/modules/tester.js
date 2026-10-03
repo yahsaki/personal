@@ -5,7 +5,7 @@ _.module.tester = {
     // than before)
     if (_.module.terminal) { _.module.terminal.data.module[module.name] = module }
 
-    console.log('tester.load: todo: load css, fetch data, BUILD EVERYTHING')
+    _.logger.log('tester.load: todo: load css, fetch data, BUILD EVERYTHING')
   },
   unload: () => {},
   fn: {

@@ -22,8 +22,9 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
-- crazy idea. save project data to browser storage, create fn to download it as json
-- change color of logs in terminal depending on level
+- add a status bar to the top(or wherever) of the site that shows statuses of things. I forget the first status that
+  we would want some indication of so just aggregate all ideas here
+- create fn to download storage data as json
 - save command history
 - create a form workflow like:
   - set up form in module(IE create project form in nabnak, two fields)
@@ -32,23 +33,25 @@ todo:
   this is a replacement for cli workflows, IE, user enters 'create project' command, terminal prompts user for
   name, whiles it until satisfactory response, continues to next field description until completed. decided
   to move forward with form due to speed of implementation
-
 - add 'killall' command that literally deletes everything, would be funny
 - add settings that save to browserdb
   - show debug output
-- music player!
-- need to implement a way for other tools to output logs to terminal. a smidge harder now that its not baked into the
-  view as before
+- music player!(place in top status bar)
 - BUG: the old implementation of terminal's argument splitting did not support quoted arguments: must fix
 - pull CVEs manually from git repo and manually generate some consumable data from it. automate this someday
 - integrate tester
-- finish integrating terminal... to an acceptable degree
 - integrate nabnak view... up to whatever we have built... to a certain degree(what the F does this mean)
-- fix title display. currently hiding it because I goofed it with absolute positioning in a setup like this. dont
-  want to gut it completely at this point
 
 
 completed:
+- 261001: fix title display. currently hiding it because I goofed it with absolute positioning in a setup like this. dont
+  want to gut it completely at this point
+- 261002: need to implement a way for other tools to output logs to terminal. a smidge harder now that its not baked into the
+  view as before
+- 261002: finish integrating terminal... to an acceptable degree
+- 261003: change color of logs in terminal depending on level
+- 261003: if I didnt mention before, logger implemented. looking good
+- 261003: storage implemented in core of project
 - 261002: add a logger to terminal. I was going to split that out but it doesnt make much sense at all since its 
   completely worthless without terminal.
 - 261002: renamed _.tool and _.view as _.module

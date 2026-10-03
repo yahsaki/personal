@@ -14,6 +14,19 @@ _.fn.load = (viewName) => {
     console.error(`_.fn.load: failed to find view '${viewName}'`);return
   }
 }
+_.fn.updateTitle = (text) => {
+  if (typeof text !== 'string' || !text.length) {
+    _.logger.log(`attepting to set site title to some garbage value`,_.logger.level.error,text)
+    return
+  }
+  let title = document.querySelector('title')
+  if (title) { title.innerText = `YAHSAKI | ${text}` }
+  else {
+    title = document.createElement('title')
+    title.innerText = `YAHSAKI | ${text}`
+    document.head.append(title)
+  }
+}
 _.logger = {
   log: (text, level, blob) => { console.log(`default logger: ${text}`, level, blob) },
   level: { debug: 'debug', info: 'info', warn: 'warn', error: 'error' }
@@ -35,8 +48,7 @@ _.storage.save = (key, data) => {
   try {
     string = JSON.stringify(data)
   } catch (err) {
-    console.log('storage.save: error saving data', err)
-    _.logger.log(`storage.save: error saving data. data type: '${typeof data}'`, _.logger.level?.error)
+    _.logger.log(`storage.save: error saving data. data type: '${typeof data}'`, _.logger.level?.error, err)
     return
   }
   localStorage.setItem(key, string)
@@ -110,6 +122,15 @@ html {
   border: 1px solid green;
   grid-column: 15 / 20;
   grid-row: 16 / 20;
+}
+.loglevel-debug {
+  color: green;
+}
+.loglevel-warn {
+  color: yellow;
+}
+.loglevel-error {
+  color: red;
 }
   `
   document.head.append(style)
