@@ -36,13 +36,26 @@ _.module.nabnak = {
     // sold
     command: {
       help: () => {},
+      // delete project data from browser storage
+      wipe: () => {},
     }
   },
   // not sure where to put workflows
+  // 261002: workflows are dead at the moment but I want to keep this here for a bit. the idea is to trigger a workflow
+  // via command(IE 'create project') and follow the instuctions via the cli until the workflow is completed. opted for
+  // forms via terminal instead for the time being
   workflow: {
     create: {
       project: () => {},
       task: () => {}
+    }
+  },
+  form: {
+    project: {
+      fields: {
+        name: { type: 'text', required: true },
+        description: { type: 'text' },
+      }
     }
   },
   data: {

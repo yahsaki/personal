@@ -116,6 +116,15 @@ _.module.terminal = {
     exit: switch back command(CMD) mode
           `)
         )
+      },
+      save: (args) => {
+        _.logger.log('save test')
+        _.storage.save('save-test', {date: new Date().toISOString()})
+      },
+      get: (args) => {
+        _.logger.log('get saved data test')
+        const data = _.storage.get('save-test')
+        _.logger.log('got data',null,data)
       }
     },
     prepend: (val) => {
@@ -201,31 +210,30 @@ _.module.terminal = {
   },
   // all logs should pipe here
   logger: {
-    log: (text, level) => {
+    log: (text, level, blob) => {
       // I would like to automagically get the fn name and module name
       if (typeof text !== 'string') {
         console.error(`terminal.logger.log: log is not of type string`);return
       }
       if (!text.length) {
-        console.error(`terminal.loggerl.log: log text is empty`);return
+        console.error(`terminal.logger.log: log text is empty`);return
       }
-      if (!_.module.terminal.logger.level[level]) {
+      if (!_.logger.level[level]) {
+        if (level) {
+          // user sent a level value thats not one of the enum values. they probably sent a blob here
+          console.log(`caller sent a non enum value in the level argument. the log was probably constructed incorrectly`, level)
+        }
         _.module.terminal.data.logs.push({ date: new Date().toISOString(), text })
         // treat the log as 'info'
-        console.log(text)
+        if (blob) { console.log(text, blob) }
+        else { console.log(text) }
         _.module.terminal.fn.prepend(text)
         return
       }
       // TODO: change the color depending on the level
       _.module.terminal.data.logs.push({ date: new Date().toISOString(), text, level })
-      console.log(text)
+      console.log(text, level, blob)
       _.module.terminal.fn.prepend(text)
-    },
-    level: {
-      debug: 'debug',
-      info: 'info',
-      warn: 'warn',
-      error: 'error',
     }
   },
   // yeah lets stuff the form logic in the root of terminal

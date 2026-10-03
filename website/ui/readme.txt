@@ -22,6 +22,7 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- crazy idea. save project data to browser storage, create fn to download it as json
 - change color of logs in terminal depending on level
 - save command history
 - create a form workflow like:

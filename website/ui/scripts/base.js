@@ -15,9 +15,31 @@ _.fn.load = (viewName) => {
   }
 }
 _.logger = {
-  log: (text, level) => {
-    console.log(text)
+  log: (text, level, blob) => { console.log(`default logger: ${text}`, level, blob) },
+  level: { debug: 'debug', info: 'info', warn: 'warn', error: 'error' }
+}
+_.storage.get = (key) => {
+  const string = localStorage.getItem(key)
+  if (!string) return
+  try {
+    const data = JSON.parse(string)
+    return data
+  } catch (err) {
+    console.log('storage.get: error parsing data to object', err)
+    _.logger.log(`storage.get: error parsing data to object`, _.logger.level?.error)
+    return
   }
+}
+_.storage.save = (key, data) => {
+  let string
+  try {
+    string = JSON.stringify(data)
+  } catch (err) {
+    console.log('storage.save: error saving data', err)
+    _.logger.log(`storage.save: error saving data. data type: '${typeof data}'`, _.logger.level?.error)
+    return
+  }
+  localStorage.setItem(key, string)
 }
 _.fn.buildBase = () => {
   _.fn.clean()
@@ -106,7 +128,7 @@ html {
     _.module.terminal.load('.base-section-terminal')
     //setTimeout(() => { _.module.terminal.unload() }, 1000)
     if (_.module.terminal.logger && typeof _.module.terminal.logger.log === 'function') {
-      _.logger = _.module.terminal.logger
+      _.logger.log = _.module.terminal.logger.log
       _.logger.log('logger set to terminal')
     }
   } else {
