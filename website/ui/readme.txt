@@ -22,6 +22,16 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- change color of logs in terminal depending on level
+- save command history
+- create a form workflow like:
+  - set up form in module(IE create project form in nabnak, two fields)
+  - send form schema to terminal to render it. terminal keeps data saved and whatnot
+  - once form passes requirements set by the original schema, completed form gets sent back to module
+  this is a replacement for cli workflows, IE, user enters 'create project' command, terminal prompts user for
+  name, whiles it until satisfactory response, continues to next field description until completed. decided
+  to move forward with form due to speed of implementation
+
 - add 'killall' command that literally deletes everything, would be funny
 - add settings that save to browserdb
   - show debug output
@@ -38,6 +48,8 @@ todo:
 
 
 completed:
+- 261002: add a logger to terminal. I was going to split that out but it doesnt make much sense at all since its 
+  completely worthless without terminal.
 - 261002: renamed _.tool and _.view as _.module
 - 261002: need recent data for the new text scroller. get dailies up and running
 - BUG: text scrollers dont handle resizing after interval creation, easy fix

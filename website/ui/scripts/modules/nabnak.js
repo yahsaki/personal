@@ -28,9 +28,21 @@ _.module.nabnak = {
   },
   unload: () => {},
   fn: {
+    // not sold on fn.render pattern yet
     render: {
       projects: () => {},
       project: (projectId) => {}
+    },
+    // sold
+    command: {
+      help: () => {},
+    }
+  },
+  // not sure where to put workflows
+  workflow: {
+    create: {
+      project: () => {},
+      task: () => {}
     }
   },
   data: {

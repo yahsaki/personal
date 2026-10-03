@@ -194,5 +194,49 @@ _.module.terminal = {
       // every tool that loads needs to put their code here if applicable(text scroller not applicable yet)
       terminal: {name: 'terminal', displayName: 'command line', code: 'CMD'}
     },
+    // logs need to be private so im leaving them out of the .logger obj. doesnt stop anyone from mucking with them
+    logs: [],
+    // TODO: save command history. why TF didnt I do this originally
+    commandHistory: [],
+  },
+  // all logs should pipe here
+  logger: {
+    log: (text, level) => {
+      // I would like to automagically get the fn name and module name
+      if (typeof text !== 'string') {
+        console.error(`terminal.logger.log: log is not of type string`);return
+      }
+      if (!text.length) {
+        console.error(`terminal.loggerl.log: log text is empty`);return
+      }
+      if (!_.module.terminal.logger.level[level]) {
+        _.module.terminal.data.logs.push({ date: new Date().toISOString(), text })
+        // treat the log as 'info'
+        console.log(text)
+        _.module.terminal.fn.prepend(text)
+        return
+      }
+      // TODO: change the color depending on the level
+      _.module.terminal.data.logs.push({ date: new Date().toISOString(), text, level })
+      console.log(text)
+      _.module.terminal.fn.prepend(text)
+    },
+    level: {
+      debug: 'debug',
+      info: 'info',
+      warn: 'warn',
+      error: 'error',
+    }
+  },
+  // yeah lets stuff the form logic in the root of terminal
+  form: {
+    validate: () => {},
+    render: () => {},
+    onSubmit: () => {},
+    onCancel: () => {},
+    schema: {
+      inputField: { type:'text/number', required:false },
+      enumField: { type:'list', required:true, options:[] }
+    }
   },
 }

@@ -14,7 +14,11 @@ _.fn.load = (viewName) => {
     console.error(`_.fn.load: failed to find view '${viewName}'`);return
   }
 }
-
+_.logger = {
+  log: (text, level) => {
+    console.log(text)
+  }
+}
 _.fn.buildBase = () => {
   _.fn.clean()
 
@@ -101,6 +105,10 @@ html {
   if (_.module.terminal) {
     _.module.terminal.load('.base-section-terminal')
     //setTimeout(() => { _.module.terminal.unload() }, 1000)
+    if (_.module.terminal.logger && typeof _.module.terminal.logger.log === 'function') {
+      _.logger = _.module.terminal.logger
+      _.logger.log('logger set to terminal')
+    }
   } else {
     console.log(`terminal.buildBase: terminal tool not loaded`)
   }
