@@ -46,6 +46,9 @@ completed:
 - set up layout
 - design how base, views and tools interact with each other
 
+notes:
+- 261002: going to start setting 'this' refs in tools/views at the start of functions. makes code cleaner and easier to
+  update for bigger modules like nabnak and tester
 how commands should work:
   before this, you would type 'kawaru' to change cli into kawaru mode, tester to do '???' and thats about it. views
   didnt exist

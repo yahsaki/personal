@@ -4,10 +4,7 @@
   <body>
     <script>
       var _ = {
-        currentMode: null,
-        currentView: null,
-        view: {},
-        tool: {},
+        module: {},
         // most functions initialized in scripts/base.js
         fn: {
           // TODO: move to base.js or some util file
@@ -46,10 +43,10 @@
       }
     </script>
     <script id="script-base" src="scripts/base.js"></script>
-    <script id="script-view-home" src="scripts/views/home.js"></script>
-    <script id="script-view-nabnak" src="scripts/views/nabnak.js"></script>
-    <script id="script-tool-terminal" src="scripts/tools/terminal.js"></script>
-    <script id="script-tool-text_scroller" src="scripts/tools/text_scroller.js"></script>
+    <script id="script-view-home" src="scripts/modules/home.js"></script>
+    <script id="script-view-nabnak" src="scripts/modules/nabnak.js"></script>
+    <script id="script-tool-terminal" src="scripts/modules/terminal.js"></script>
+    <script id="script-tool-text_scroller" src="scripts/modules/text_scroller.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         if (window.location.protocol === 'file:') {

@@ -1,4 +1,4 @@
-_.view.home = {
+_.module.home = {
   load: () => {
     
   }

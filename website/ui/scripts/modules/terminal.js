@@ -1,6 +1,6 @@
 // terminal was not designed to ever be unloaded so I originally built it in the infra but this time around im
 // going to treat it as a plugin thats never unloaded(it doesnt need to know that)
-_.tool.terminal = {
+_.module.terminal = {
   // going to keep load/unload out of .fn since these are foundational logic that every tool/view shares
   load: (selector) => {
     // I really liked having the html and css split in their own functions. might go back to that, no reason not to
@@ -9,9 +9,9 @@ _.tool.terminal = {
       console.error(`terminal.load: failed to find the parent element via selector '${selector}'`);return
     }
 
-    _.tool.terminal.data.parentSelector = selector
+    _.module.terminal.data.parentSelector = selector
     // this will cause a bug if we create terminals on the same tick
-    const id = _.tool.terminal.data.id = crypto.randomUUID()
+    const id = _.module.terminal.data.id = crypto.randomUUID()
     const html = document.createElement('div')
     html.setAttribute('id', `terminal-html-${id}`)
     html.setAttribute('class', 'terminal-container')
@@ -55,20 +55,20 @@ _.tool.terminal = {
     `
     document.head.append(style)
 
-    const inputEl = document.querySelector(_.tool.terminal.data.inputSelector)
+    const inputEl = document.querySelector(_.module.terminal.data.inputSelector)
     if (!inputEl) {
-      throw Error(`failed to find terminal input element by selector '${_.tool.terminal.data.inputSelector}'`)
+      throw Error(`failed to find terminal input element by selector '${_.module.terminal.data.inputSelector}'`)
     }
-    inputEl.addEventListener('keydown', _.tool.terminal.fn.onInputKeyDown)
+    inputEl.addEventListener('keydown', _.module.terminal.fn.onInputKeyDown)
     window.addEventListener('resize', () => {
-      //document.querySelector(_.tool.terminal.data.containerSelector).setAttribute('style', `height:${window.innerHeight - 20}px;`)
+      //document.querySelector(_.module.terminal.data.containerSelector).setAttribute('style', `height:${window.innerHeight - 20}px;`)
     })
-    _.tool.terminal.fn.updateCurrentModule()
+    _.module.terminal.fn.updateCurrentModule()
     console.log('terminal.load: load complete')
   },
   unload: () => {
-    const selector = _.tool.terminal.data.parentSelector
-    const id = _.tool.terminal.data.id
+    const selector = _.module.terminal.data.parentSelector
+    const id = _.module.terminal.data.id
     const parentEl = document.querySelector(selector)
     if (!parentEl) {
       console.error(`terminal.unload: failed to find the parent element via selector '${selector}'`)
@@ -78,9 +78,9 @@ _.tool.terminal = {
       //return
     }
 
-    const inputEl = document.querySelector(_.tool.terminal.data.inputSelector)
+    const inputEl = document.querySelector(_.module.terminal.data.inputSelector)
     // honestly i need to test that removing like this works
-    if (inputEl) { inputEl.removeEventListener('keydown', _.tool.terminal.fn.onInputKeyDown) }
+    if (inputEl) { inputEl.removeEventListener('keydown', _.module.terminal.fn.onInputKeyDown) }
 
     // terminal doesnt have any intervals floating around, but other than that, all the logic for a tool is isolated
     // to itself, or at least it should be
@@ -88,8 +88,8 @@ _.tool.terminal = {
     const style = document.getElementById(`terminal-style-${id}`)
     if (html) { html.remove() }
     if (style) { style.remove() }
-    _.tool.terminal.data.parentSelector = null
-    _.tool.terminal.data.id = null
+    _.module.terminal.data.parentSelector = null
+    _.module.terminal.data.id = null
     // is that it?
     console.log(`terminal.unload: removed everything probably, good luck verifying that`)
   },
@@ -98,15 +98,15 @@ _.tool.terminal = {
     // pondering placing this in root of tool
     command: {
       clear: (args) => {
-        const outputEl = document.querySelector(_.tool.terminal.data.outputSelector)
+        const outputEl = document.querySelector(_.module.terminal.data.outputSelector)
         if (!outputEl) {
-          throw Error(`failed to find terminal output element by selector '${_.tool.terminal.data.outputSelector}'`)
+          throw Error(`failed to find terminal output element by selector '${_.module.terminal.data.outputSelector}'`)
         }
         outputEl.replaceChildren()
         console.log('terminal.fn.command.clear: terminal cleared')
       },
       help: (args) => {
-        _.tool.terminal.fn.prepend(
+        _.module.terminal.fn.prepend(
           _.fn.createElement('pre', [], `
     TODO: make this modular(somehow)(CCOMLETE)
     clear: clear terminal \u4e0b\u8f7d  &#72;
@@ -120,8 +120,8 @@ _.tool.terminal = {
     },
     prepend: (val) => {
       if (!val) { console.error(`attempted to prepend null(or false) val to terminal output`);return }
-      const outputEl = document.querySelector(_.tool.terminal.data.outputSelector)
-      if (!outputEl) { throw Error(`terminal output element missing for selector '${_.tool.terminal.data.outputSelector}'`) }
+      const outputEl = document.querySelector(_.module.terminal.data.outputSelector)
+      if (!outputEl) { throw Error(`terminal output element missing for selector '${_.module.terminal.data.outputSelector}'`) }
 
       const li = document.createElement('li')
       if (typeof val === 'string') { li.textContent = val }
@@ -130,55 +130,55 @@ _.tool.terminal = {
       outputEl.prepend(li)
     },
     updateCurrentModule: (code) => {
-      const toolCode = _.tool.terminal.data.toolCode
+      const module = _.module.terminal.data.module
       if (!code) {
-        code = toolCode.CMD.code
-        _.tool.terminal.data.currentMode = code
+        code = module.CMD.code
+        _.module.terminal.data.currentMode = code
       }
-      if (!_.tool[toolCode[code].name]) { throw Error(`unknown tool code '${code}'`) }
-      const titleEl = document.querySelector(_.tool.terminal.data.titleSelector)
-      if (!titleEl) { throw Error(`terminal title element missing for selector '${_.tool.terminal.data.titleSelector}'`) }
+      if (!_.module[module[code].name]) { throw Error(`unknown tool code '${code}'`) }
+      const titleEl = document.querySelector(_.module.terminal.data.titleSelector)
+      if (!titleEl) { throw Error(`terminal title element missing for selector '${_.module.terminal.data.titleSelector}'`) }
 
-      console.log(`switching mode to '${code}'(${toolCode[code].displayName || toolCode[code].name})`)
-      _.tool.terminal.data.currentMode = code
+      console.log(`switching mode to '${code}'(${module[code].displayName || module[code].name})`)
+      _.module.terminal.data.currentMode = code
       titleEl.innerText = code
     },
     onInputKeyDown: (e) => {
       console.log('hit', e.key)
-      const toolCode = _.tool.terminal.data.toolCode
-      const currentMode = _.tool.terminal.data.currentMode
-      if (currentMode !== toolCode.CMD.code) {
+      const module = _.module.terminal.data.module
+      const currentMode = _.module.terminal.data.currentMode
+      if (currentMode !== module.CMD.code) {
         if (e.key === 'Escape') {
-          if (typeof _.tool[toolCode[code].name]?.fn?.cleanup === 'function') {
-            _.tool[toolCode[code].name]?.fn?.cleanup()
+          if (typeof _.module[module[code].name]?.fn?.cleanup === 'function') {
+            _.module[module[code].name]?.fn?.cleanup()
           }
-          // magiriwashi no namae desu ne, 'toolCode.CMD.code'
-          _.tool.terminal.fn.updateCurrentModule(toolCode.CMD.code)
-          _.tool.terminal.fn.prepend('switched to command mode')
+          // magiriwashi no namae desu ne, 'module.CMD.code'
+          _.module.terminal.fn.updateCurrentModule(module.CMD.code)
+          _.module.terminal.fn.prepend('switched to command mode')
         }
       }
       if (e.key !== 'Enter') return
       if (!e.target?.value?.length) return
 
       const input = e.target.value
-      _.tool.terminal.fn.handleInput(input)
+      _.module.terminal.fn.handleInput(input)
       e.target.value = ""
     },
     handleInput: (input) => {
       console.log('terminal.fn.handleInput: input', input)
-      const currentMode = _.tool.terminal.data.currentMode
-      const toolCode = _.tool.terminal.data.toolCode
-      if (currentMode !== toolCode.CMD.code) {
+      const currentMode = _.module.terminal.data.currentMode
+      const module = _.module.terminal.data.module
+      if (currentMode !== module.CMD.code) {
         console.log('terminal.fn.handleInput: TODO: support piping input to other tools')
         return
       }
 
       const args = input.split(' ')
       const command = args.splice(0, 1)[0]
-      if (!_.tool.terminal.fn.command[command]) {
-        _.tool.terminal.fn.prepend(`command '${command}' not found`);return
+      if (!_.module.terminal.fn.command[command]) {
+        _.module.terminal.fn.prepend(`command '${command}' not found`);return
       }
-      _.tool.terminal.fn.command[command](args)
+      _.module.terminal.fn.command[command](args)
     }
   },
   data: {
@@ -190,7 +190,7 @@ _.tool.terminal = {
     parentSelector: null, // set from caller when .load is called
     currentMode: null,
     // not in love with this naming convention
-    toolCode: {
+    module: {
       // every tool that loads needs to put their code here if applicable(text scroller not applicable yet)
       CMD: {name: 'terminal', displayName: 'command line', code: 'CMD'}
     },

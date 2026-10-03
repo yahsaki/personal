@@ -1,4 +1,4 @@
-_.tool.textScroller = {
+_.module.textScroller = {
   // since this tool isnt a 'load once and done' like terminal, changing .load to something like .create makes more
   // sense, but for consistency's sake im leaving it as load/unload for now
   load: () => {
@@ -6,7 +6,7 @@ _.tool.textScroller = {
     
     // pointless. we only ever load one instance of this module but we create multiple instances of scrollers. still
     // keeping the id pattern though, for now
-    const id = _.tool.textScroller.data.id = crypto.randomUUID()
+    const id = _.module.textScroller.data.id = crypto.randomUUID()
 
     // NOTE: this css is not unique to this instance, it is applicable to all instances! this means load executes
     // one time code while
@@ -44,15 +44,15 @@ _.tool.textScroller = {
     const style = document.getElementById(`text-scroller-style-${id}`)
     if (style) { style.remove() }
     // again, unlike terminal, we need to go through each instance and attempt to remove html
-    for (let i = 0; i < _.tool.textScroller.data.instances.length; i++) {
+    for (let i = 0; i < _.module.textScroller.data.instances.length; i++) {
       // we dont have any event listeners yet but if we gain them, we should remove them properly. browsers garbage
       // collect unreferenced ghost event listeners but its not wise to count on that(because we couldve goofed a ref)
     }
     // just blow away the instances object here
-    _.tool.textScroller.data.instances.length = 0
+    _.module.textScroller.data.instances.length = 0
 
 
-    _.tool.textScroller.data.id = null
+    _.module.textScroller.data.id = null
   },
   fn: {
     valdateData: (data) => {
@@ -78,7 +78,7 @@ _.tool.textScroller = {
       if (!parentEl) {
         console.error(`textScroller.fn.createTextScroller: failed to find the parent element via selector '${selector}'`);return
       }
-      const errors = _.tool.textScroller.fn.valdateData(data)
+      const errors = _.module.textScroller.fn.valdateData(data)
       if (errors.length) {
         console.error(`textScroller.fn.createTextScroller: error loading data: ${errors.join(', ')}`)
         return
@@ -90,7 +90,7 @@ _.tool.textScroller = {
         intervalId: null,
         index: 0,
       }
-      _.tool.textScroller.data.instances.push(instance)
+      _.module.textScroller.data.instances.push(instance)
 
       const html = document.createElement('div')
       html.setAttribute('id', `text-scroller-${instance.id}`)
@@ -104,7 +104,7 @@ _.tool.textScroller = {
       `
       parentEl.append(html)
       console.log(`textScroller.fn.createTextScroller: skeleton instantiated. animating...`)
-      _.tool.textScroller.fn.animate(instance)
+      _.module.textScroller.fn.animate(instance)
     },
     animate: (instance) => {
       // we have no way to stop/pause scroller at the moment, besides purging everything
@@ -131,12 +131,12 @@ _.tool.textScroller = {
 
       let position = 0
       const scrollMax = contentEl.scrollTopMax
-      const intervalSpan = contentEl.clientWidth / _.tool.textScroller.data.scrollSpeed
+      const intervalSpan = contentEl.clientWidth / _.module.textScroller.data.scrollSpeed
 
       console.log('document.querySelector(`#text-scroller-' + instance.id + ' .text-scroller-content`)' + `.scrollTo({top: 0, left: 0, behavior: 'smooth'})`)
       console.log('textScroller.animate: interval span', intervalSpan)
       instance.intervalId = setInterval(() => {
-        position += _.tool.textScroller.data.scrollPixelAmount
+        position += _.module.textScroller.data.scrollPixelAmount
 
         contentEl.scrollTo({
           top: position,
@@ -146,7 +146,7 @@ _.tool.textScroller = {
         //console.log(`scrollMax: ${scrollMax}, position: ${position}, intervalSpan: ${intervalSpan}`)
         if (position >= scrollMax) {
           clearInterval(instance.intervalId)
-          setTimeout(() => { _.tool.textScroller.fn.onAnimationCompleted(instance) }, 1000)
+          setTimeout(() => { _.module.textScroller.fn.onAnimationCompleted(instance) }, 1000)
         }
       }, intervalSpan)
     },
@@ -155,9 +155,9 @@ _.tool.textScroller = {
       if (!instance.data[instance.index]) {
         console.log(`textScroller.fn.onAnimationCompleted: text scroller '${instance.id}' has completed rendering data ${instance.data.length} blobs. starting over`)
         instance.index = 0
-        _.tool.textScroller.fn.animate(instance)
+        _.module.textScroller.fn.animate(instance)
       } else {
-        _.tool.textScroller.fn.animate(instance)
+        _.module.textScroller.fn.animate(instance)
       }
     },
   },

@@ -98,15 +98,15 @@ html {
 
   // im going to opt for manually loading the tools instead of letting them load themselves when the script is
   // initialized. lets even tell it where to install itself
-  if (_.tool.terminal) {
-    _.tool.terminal.load('.base-section-terminal')
-    //setTimeout(() => { _.tool.terminal.unload() }, 1000)
+  if (_.module.terminal) {
+    _.module.terminal.load('.base-section-terminal')
+    //setTimeout(() => { _.module.terminal.unload() }, 1000)
   } else {
     console.log(`terminal.buildBase: terminal tool not loaded`)
   }
-  if (_.tool.textScroller) {
+  if (_.module.textScroller) {
     // we need to fetch data for this to work. how about something like
-    // _.tool.textScroller.load({selector:'.base-secction-text-scroller0', data:data, options})
+    // _.module.textScroller.load({selector:'.base-secction-text-scroller0', data:data, options})
     // I think we need the option to have the tool somehow refresh with different data after so long... right?
     // IIRC I just gave it enough data to not really care about it in the past, and I had a ton of em. with only two
     // you kinda want it to refresh. I dont like the idea of that happening automagically, so how about making a 
@@ -132,16 +132,21 @@ html {
         content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
       },
     ]
-    _.tool.textScroller.load()
+    _.module.textScroller.load()
     // this line is working, just keeping cli output silent
-    //_.tool.textScroller.fn.createTextScroller('.base-section-text-scroller0', data)
+    //_.module.textScroller.fn.createTextScroller('.base-section-text-scroller0', data)
   } else {
     console.log(`terminal.buildBase: textScroller tool not loaded`)
   }
   
-  if (_.tool.tester) {
+  if (_.module.tester) {
 
   } else {
     console.log(`terminal.buildBase: tester tool not loaded`)
+  }
+
+  // defaulting the view to nabnak for now
+  if (_.module.nabnak) {
+    _.module.nabnak.load('.base-section-content')
   }
 }
