@@ -120,9 +120,39 @@ _.module.nabnak = {
           html.append(h1)
           return html  
         }
-        const h1 = document.createElement('h1')
-        h1.innerText = `Project: ${project.name}\nTask Count: ${project.tasks.length}`
-        html.append(h1)
+        // trying some weird formatting where the family tree stays at the top. not liking it so far. rather just
+        // create string html with fns embedded throughout
+        // I give up on this unreadable crap
+        /*const taskHeaderContainerEl = document.createElement('div');html.append(taskHeaderContainerEl)
+        const titleEl = document.createElement('h1');taskHeaderContainerEl.append(titleEl)
+        const tasksContainerEl = document.createElement('div');html.append(tasksContainerEl)
+        const todoColEl = document.createElement('div');taskHeaderContainerEl.append(todoColEl)
+        const todoColTitle = document.createElement('div');todoColEl.append(todoColTitle)
+        const inprogressColEl = document.createElement('div');taskHeaderContainerEl.append(inprogressColEl)
+        const doneColEl = document.createElement('div');taskHeaderContainerEl.append(doneColEl)
+        taskHeaderContainerEl.setAttribute('class', 'project-title-container')
+        titleEl.setAttribute('class', 'project-title')
+        titleEl.innerText = `Project: ${project.name}`
+        tasksContainerEl.setAttribute('class', 'tasks-container')*/
+
+        let string = `
+        <div class="project-title-container">
+          <h1>Project Name: ${project.name}</h1>
+        </div>
+        <div class="tasks-container">
+          <div class="todo-col">
+            <h1>TODO</h1>
+          </div>
+          <div class="inprogress-col">
+            <h1>In Progress</h1>
+          </div>
+          <div class="done-col">
+            <h1>Done</h1>
+          </div>
+        </div>
+        `
+        
+        html.innerHTML = string
         return html
       },
       // putting this select project pattern on hold for now
@@ -274,7 +304,20 @@ _.module.nabnak = {
         border-right: 1px solid red;
       }
       .nabnak .home .project-container {
-      
+        
+      }
+      .nabnak .home .tasks-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .nabnak .home .project-container .todo-col {
+        border: 1px black;
+      }
+      .nabnak .home .project-container .inprogress-col {
+        border: 1px black;
+      }
+      .nabnak .home .project-container .done-col {
+        border: 1px black;
       }
       `
       document.head.append(style)
