@@ -37,13 +37,13 @@ _.module.nabnak = {
       const projects = _.storage.get(_.module.nabnak.data.storageKey)
       if (projects) {
         _.module.nabnak.data.projects = projects
-        _.logger.log(`nabnak.get: fetched ${projects.length} projects`)
+        _.logger.log(`nabnak.get: fetched ${projects.length} projects`,_.logger.level.debug,projects)
       } else {
         _.logger.log(`nabnak.get: no projects found`)
       }
     },
-    onProjectClick: () => {
-      _.logger.log('project clicked',_.logger.level.debug)
+    onProjectClick: (id) => {
+      _.logger.log('project clicked',_.logger.level.debug, id)
     },
     // not sold on fn.render pattern yet
     render: {
@@ -66,7 +66,7 @@ _.module.nabnak = {
           for (let i = 0; i < data.projects.length; i++) {
             const project = data.projects[i]
             string += `
-            <li onclick="_.module.nabnak.fn.onProjectClick()" data-projectId="${project.id}" data-tempId="${i}">
+            <li onclick="_.module.nabnak.fn.onProjectClick('${project.id}')" data-projectId="${project.id}" data-tempId="${i}">
               <b>${i}</b>: ${project.name}
             </li>
             `
@@ -80,7 +80,10 @@ _.module.nabnak = {
     command: {
       help: () => {},
       // delete project data from browser storage
-      wipe: () => {},
+      wipe: () => {
+        _.storage.save(_.module.nabnak.data.storageKey, null)
+        _.logger.log('cleared nabnak storage')
+      },
       create: {
         project: () => {
           _.logger.log('create project called!',_.logger.level.debug)
@@ -110,6 +113,10 @@ _.module.nabnak = {
         fn = _.module.nabnak.fn.command[args[0]]?[args[1]]
         if (typeof fn === 'function') fn(otherargs)
       */
+      if (typeof _.module.nabnak.fn.command[args[0]] === 'function') {
+        _.module.nabnak.fn.command[args[0]](args)
+        return
+      }
       switch (args[0]) {
         case 'create': {
           if (!args[1]) { _.logger.log(`nabnak.handleInput: invalid create command. add what you want to create after that`,_.logger.level.warn);return }
@@ -130,6 +137,21 @@ _.module.nabnak = {
     onSubmit: {
       projectCreate: (args) => {
         _.logger.log('nabnak.fn.onSubmit.projectCreate: project submitted!',_.logger.level.debug, args)
+        const project = {..._.module.nabnak.schema.project}
+        const date = new Date()
+        project.id = crypto.randomUUID()
+        project.name = args.name.value
+        project.description = args.description.value
+        if (args.tags.value.length) {
+          // _.form handles cleaning up tags
+          project.tags = args.tags.value.split(',')
+        }
+        project.date_created = date.toISOString()
+        project.date_updated = date.toISOString()
+
+        _.module.nabnak.data.projects.push(project)
+        _.logger.log(`nabnak.onSubmit.projectCreate: project '${project.name}' created`)
+        _.module.nabnak.fn.save()
       }
     },
     setCss: () => {
@@ -154,6 +176,66 @@ _.module.nabnak = {
       task: () => {}
     }
   },
+  schema: {
+    // the idea was not to use enums but to use tags, like 'status-todo' and 'priority-low'. leaving these two for now
+    // and will build the cool dynamic tag grouping display logic later
+    enum: {
+      status: {
+        todo: 'todo',
+        inprogress: 'inprogress',
+        done: 'done'
+      },
+      priority: {
+        low: 'low',
+        medium: 'medium',
+        high: 'high',
+      }
+    },
+    project: {
+      id: null,
+      date_created: null,
+      date_updated: null,
+      name: null,
+      description: null,
+      groups: [],
+      tasks: [],
+      tags: [],
+      comments: [],
+    },
+    // changed how 'stories' work last minute. I like task groups better; also makes it fit in more places instead of
+    // 'stories'
+    group: {
+      id: null,
+      date_created: null,
+      date_updated: null,
+      name: null,
+      description: null,
+      acceptanceCriteria: null,
+      tasks: [],
+      tags: [],
+      comments: [],
+    },
+    task: {
+      id: null,
+      //groupId: null, // need to support groups one of these days
+      date_created: null,
+      date_updated: null,
+      // /UPDATE-able fields
+      name: null,
+      description: null,
+      acceptanceCriteria: null,
+      status: null,
+      tags: [],
+      // end 
+      date_started: null,
+      date_completed: null,
+      // comments have own path
+      comments: [],
+      // date required to be completed(Due Date)? I dont need such thing but yeah
+      // history is a great one(someday)
+      // priority
+    }
+  },
   form: {
     project: {
       fields: {
@@ -161,6 +243,18 @@ _.module.nabnak = {
         description: { type: 'text' },
         tags: { type: 'tags' }, // text field with comma separated unique strings, spaces are squashed
       },
+    },
+    task: {
+      fields: {
+        projectId: { type: 'hidden' }, // we technically dont need this field in schema since tasks always live in project
+        name: { type: 'text', required: true },
+        description: { type: 'text' },
+        tags: { type: 'tags' },
+        acceptanceCriteria: { type: 'textarea', displayName: 'Acceptance Criteria' },
+        // had to set these values manually due to circular reference(or not yet initialized) error
+        status: { type: 'select', required: true, values: ['todo','inprogress','done'] },
+        priority: { type: 'select', required: true, values: ['low','medium','high'] }
+      }
     }
   },
   data: {

@@ -22,6 +22,11 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- hope this already isnt in here. regarding tags, we intend to have views dynamically render depending on tagged content,
+  like projects being tagged 'type-personal', 'type-commercial', then we could create a dynamic view like,
+    'render all projects of type personal first' or only, or something. can group by rows and what not
+- add shortcuts, like (n)abnak('n' to switch to nabnak)
+- add warning messages when form encounters fields it doesnt support
 - truncate logs(after 1000 or so)
 - videos! will need to be hard subbed
 - R&D changing all modules into classes for proper isolation of vars/fns.

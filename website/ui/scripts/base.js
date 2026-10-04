@@ -56,7 +56,7 @@ _.storage.get = (key) => {
   if (!string) return
   try {
     const data = JSON.parse(string)
-    return data
+    return data 
   } catch (err) {
     console.log('storage.get: error parsing data to object', err)
     _.logger.log(`storage.get: error parsing data to object`, _.logger.level?.error)
@@ -68,11 +68,14 @@ _.storage.save = (key, data) => {
   try {
     string = JSON.stringify(data)
   } catch (err) {
-    _.logger.log(`storage.save: error saving data. data type: '${typeof data}'`, _.logger.level?.error, err)
+    _.logger.log(`storage.save: data is not a valid object. data type: '${typeof data}'`, _.logger.level?.error, err)
     return
   }
-  localStorage.setItem(key, string)
+  // im still leaving the stringify call to verify that its an object that can be stringified
+  localStorage.setItem(key, data)
 }
+// placeholder, gets replaced by terminal
+_.fn.focus = () => {}
 _.fn.buildBase = () => {
   _.fn.clean()
 

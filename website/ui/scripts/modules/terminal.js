@@ -64,7 +64,9 @@ _.module.terminal = {
       //document.querySelector(_.module.terminal.data.containerSelector).setAttribute('style', `height:${window.innerHeight - 20}px;`)
     })
     _.module.terminal.fn.updateCurrentModule()
-    _.logger.log('terminal.load: load complete')
+
+    _.fn.focus = _.module.terminal.fn.focus
+    _.logger.log('terminal.load: load complete. terminal hijacked global focus fn btw')
   },
   unload: () => {
     const selector = _.module.terminal.data.parentSelector
@@ -121,6 +123,12 @@ _.module.terminal = {
         const data = _.storage.get('save-test')
         _.logger.log('got data',_.logger.level.debug,data)
       }
+    },
+    focus: () => {
+      const inputEl = document.querySelector(_.module.terminal.data.inputSelector)
+      if (!inputEl) { throw Error(`terminal input element missing for selector '${_.module.terminal.data.inputSelector}'`) }
+
+      inputEl.focus()
     },
     // I would like to combine these but im not going to do that yet
     prepend: (val) => {
@@ -413,6 +421,9 @@ _.module.terminal = {
         _.logger.log(`form successfully submitted ＼（＾０＾）ノ,`)
         // purge current
         _.form.current = null
+        
+        // this line needs to be placed somewhere where it gets called regularly, like after most actions
+        _.module.terminal.fn.focus()
       }
     },
     onCancel: () => {
