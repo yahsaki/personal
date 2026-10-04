@@ -22,6 +22,7 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- change all css class to have module name prepended to it, so instead of '.error', its '.terminal .error', etc
 - hope this already isnt in here. regarding tags, we intend to have views dynamically render depending on tagged content,
   like projects being tagged 'type-personal', 'type-commercial', then we could create a dynamic view like,
     'render all projects of type personal first' or only, or something. can group by rows and what not

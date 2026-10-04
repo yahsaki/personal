@@ -20,7 +20,7 @@ _.module.nabnak = {
 
     _.module.nabnak.fn.get()
     _.module.nabnak.fn.setCss()
-    _.module.nabnak.fn.render.projects()
+    _.module.nabnak.fn.render.home()
     _.logger.log('nabnak.load: load complete') 
   },
   unload: () => {
@@ -44,29 +44,63 @@ _.module.nabnak = {
     },
     onProjectClick: (id) => {
       _.logger.log('project clicked',_.logger.level.debug, id)
+      const project = _.module.nabnak.data.projects.find(x => x.id === id)
+      if (!project) {
+        _.logger.log(`nabnak.fn.onProjectClick: failed to find project by id '${id}'`,_.logger.level.warn);return
+      }
+      _.module.nabnak.data.selectedProject = project
+      // temp: rerender projects page. supposed to render selected project page
+      _.logger.log(`project '${project.name}' selected`)
+      _.module.nabnak.fn.render.home()
     },
     // not sold on fn.render pattern yet
     render: {
+      home: () => { // home = projects page for the most part
+        // 261004: want to start writing more agnostic code, starting with not directly referencing itself everywhere,
+        // less things to change on renames and restructures are easier
+        const mod = _.module.nabnak
+        const parentEl = document.querySelector(mod.data.parentSelector)
+        
+        const projectsEl = mod.fn.buildHtml.projects()
+        const projectEl = mod.fn.buildHtml.project(mod.data.selectedProject)
+
+        _.fn.clear(_.module.nabnak.data.parentSelector)
+
+        const html = document.createElement('div')
+        html.setAttribute('class', 'nabnak')
+        html.setAttribute('data-id', mod.data.id)
+        parentEl.append(html)
+
+        const wrapper = document.createElement('div')
+        wrapper.setAttribute('class', 'home')
+        wrapper.append(projectsEl)
+        wrapper.append(projectEl)
+        html.append(wrapper)
+      }
+    },
+    buildHtml: {
       projects: () => {
         const data = _.module.nabnak.data
-        const parentEl = document.querySelector(data.parentSelector)
         const html = document.createElement('div')
-        html.setAttribute('data-id', data.id)
-        html.setAttribute('class', 'nabnak-projects-container')
+        html.setAttribute('class', 'projects-container')
         html.innerHTML = `
-        <h1>PROJECT COUNT: ${data.projects.length}</h1>
+        <b>COUNT: ${data.projects.length}</b>
         <ul>
         ${renderProjectList()}
         </ul>
         `
-        parentEl.append(html)
+        return html
 
         function renderProjectList() {
           let string = ''
           for (let i = 0; i < data.projects.length; i++) {
             const project = data.projects[i]
+            let className = 'not-selected'
+            if (project.id === data.selectedProject?.id) {
+              className = 'selected'
+            }
             string += `
-            <li onclick="_.module.nabnak.fn.onProjectClick('${project.id}')" data-projectId="${project.id}" data-tempId="${i}">
+            <li class="${className}" onclick="_.module.nabnak.fn.onProjectClick('${project.id}')" data-projectId="${project.id}" data-tempId="${i}">
               <b>${i}</b>: ${project.name}
             </li>
             `
@@ -74,7 +108,40 @@ _.module.nabnak = {
           return string
         }
       },
-      project: (projectId) => {}
+      project: (project) => {
+        // thinking about it, a different fn should interface with elements returning an index. only private fns
+        // should call this fn which should always have the projectId. lets see how this goes
+        
+        const html = document.createElement('div')
+        html.setAttribute('class', 'project-container')
+        if (!project) {
+          const h1 = document.createElement('h1')
+          h1.innerText = `NO PROJECT SELECTED`
+          html.append(h1)
+          return html  
+        }
+        const h1 = document.createElement('h1')
+        h1.innerText = `Project: ${project.name}\nTask Count: ${project.tasks.length}`
+        html.append(h1)
+        return html
+      },
+      // putting this select project pattern on hold for now
+      project_args_on_hold: (args) => {
+        // can select project(or tasks) by projectId or index
+        const projectId = args.projectId
+        const index = parseInt(args.index)
+        let project
+        if (projectId) {
+          project = _.module.nabnak.data.projects.find(x => x.id === projectId)
+        }
+        if (!isNaN(index) && !project) {
+          project = _.module.nabnak.data.projects[index]
+        }
+        // whhhooo I dont like this code
+        if (!project) {
+          _.logger.log(`failed to find project from one of these arguments: projectId: ${projectId}, index: ${index}`,_.logger.level.warn);return
+        }
+      }
     },
     // sold
     command: {
@@ -83,6 +150,20 @@ _.module.nabnak = {
       wipe: () => {
         _.storage.save(_.module.nabnak.data.storageKey, null)
         _.logger.log('cleared nabnak storage')
+      },
+      select: {
+        project: (index) => {
+          const mod = _.module.nabnak
+          _.logger.log('select project called!',_.logger.level.debug, index)
+          const project = mod.data.projects[index]
+          if (project) {
+            mod.data.selectedProject = project
+            mod.fn.render.home()
+          }
+        }
+      },
+      home: () => {
+        _.module.nabnak.fn.render.home()
       },
       create: {
         project: () => {
@@ -102,6 +183,9 @@ _.module.nabnak = {
             callback: _.module.nabnak.fn.onSubmit.projectCreate,
             callbackName: 'projectCreate'
           })
+        },
+        task: (args) => {
+
         }
       }
     },
@@ -117,6 +201,7 @@ _.module.nabnak = {
         _.module.nabnak.fn.command[args[0]](args)
         return
       }
+      // unreadable garbage dump
       switch (args[0]) {
         case 'create': {
           if (!args[1]) { _.logger.log(`nabnak.handleInput: invalid create command. add what you want to create after that`,_.logger.level.warn);return }
@@ -126,6 +211,18 @@ _.module.nabnak = {
             } break
             default: {
               _.logger.log(`invalid create argument '${args[1]}'. see help for details(doesnt exist yet)`,_.logger.level.warn)
+            } break
+          }
+        } break
+        case 'select': {
+          if (!args[1]) { _.logger.log(`nabnak.handleInput: invalid select command. add what you want to select after that`,_.logger.level.warn);return }
+          switch (args[1]) {
+            case 'project': {
+              if (!args[2]) { _.logger.log(`select argument requires project id as third argument. see help for details(doesnt exist yet)`,_.logger.level.warn);return }
+              _.module.nabnak.fn.command.select.project(args[2])
+            } break
+            default: {
+              _.logger.log(`invalid select argument '${args[1]}'. see help for details(doesnt exist yet)`,_.logger.level.warn)
             } break
           }
         } break
@@ -159,8 +256,25 @@ _.module.nabnak = {
       const style = document.createElement('style')
       style.setAttribute('data-id', _.module.nabnak.data.id)
       style.innerText = `
-      .nabnak-projects-container ul li {
+      .nabnak {}
+      .nabnak .projects-container ul li {
         cursor: pointer;
+      }
+      .nabnak .projects-container .selected {
+        text-decoration: underline;
+      }
+      .nabnak .projects-container .not-selected {}
+      .nabnak .project-container {}
+
+      .nabnak .home {
+        display: grid;
+        grid-template-columns: 1fr 8fr;
+      }
+      .nabnak .home .projects-container {
+        border-right: 1px solid red;
+      }
+      .nabnak .home .project-container {
+      
       }
       `
       document.head.append(style)
@@ -258,9 +372,13 @@ _.module.nabnak = {
     }
   },
   data: {
+    // this id is for UI elements, not for saved data
     id: `nabnak-${crypto.randomUUID()}`,
     storageKey: 'nabnak-projects',
     parentSelector: null,
+    // gets blown away on page refreshes. will need to persist at some point
+    selectedProject: null,
+    selectedTask: null,
     projects: []
   },
 }

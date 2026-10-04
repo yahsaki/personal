@@ -55,7 +55,7 @@ _.storage.get = (key) => {
   const string = localStorage.getItem(key)
   if (!string) return
   try {
-    const data = JSON.parse(string)
+    const data = JSON.parse(string) 
     return data 
   } catch (err) {
     console.log('storage.get: error parsing data to object', err)
@@ -162,10 +162,10 @@ html {
 
   /*
     as of 261003:
-    content is 80% of full width
+    content is 80% of height
     scrollers are the last 20%
     terminal is 70%
-    tester is %30
+    tester is 30%
   */
   document.querySelector('.base-section-content').setAttribute('style', `height:${window.innerHeight / 100 * 80}px;`)
   //document.querySelector('.base-section-text-scroller0').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
