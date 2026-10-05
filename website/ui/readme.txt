@@ -22,6 +22,7 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- implement update project/task
 * I think at some point(maybe soon) we're going to need ability to sort tasks
 - add 'date_due' field to task. im thinkin the date select field is 3 DDLs with year-month-day values. easy enuf
   y<ddl>m<ddl>d<ddl>, barely any bigger than the default input length if so

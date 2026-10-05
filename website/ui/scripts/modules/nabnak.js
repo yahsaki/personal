@@ -111,7 +111,7 @@ _.module.nabnak = {
       project: (project) => {
         // thinking about it, a different fn should interface with elements returning an index. only private fns
         // should call this fn which should always have the projectId. lets see how this goes
-        
+        const mod = _.module.nabnak
         const html = document.createElement('div')
         html.setAttribute('class', 'project-container')
         if (!project) {
@@ -135,25 +135,59 @@ _.module.nabnak = {
         titleEl.innerText = `Project: ${project.name}`
         tasksContainerEl.setAttribute('class', 'tasks-container')*/
 
+        const todoTasks = project.tasks.filter(x => x.status === mod.schema.enum.status.todo)
+        const inprogressTasks = project.tasks.filter(x => x.status === mod.schema.enum.status.inprogress)
+        const doneTasks = project.tasks.filter(x => x.status === mod.schema.enum.status.done)
+
         let string = `
         <div class="project-title-container">
           <h1>Project Name: ${project.name}, task count: ${project.tasks.length}</h1>
         </div>
         <div class="tasks-container">
-          <div class="todo-col">
+          <div class="task-col todo-col">
             <h1>TODO</h1>
+            <div class="task-list">
+              ${renderTasks(todoTasks)}
+            </div>
           </div>
-          <div class="inprogress-col">
+          <div class="task-col inprogress-col">
             <h1>In Progress</h1>
+            <div class="task-list">
+              ${renderTasks(inprogressTasks)}
+            </div>
           </div>
-          <div class="done-col">
+          <div class="task-col done-col">
             <h1>Done</h1>
+            <div class="task-list">
+              ${renderTasks(doneTasks)}
+            </div>
           </div>
         </div>
         `
         
         html.innerHTML = string
         return html
+
+        function renderTasks(tasks) {
+          let string = ''
+          for (let i in tasks) {
+            const task = tasks[i]
+            string += `
+            <div class="task">
+              <p>created: ${task.date_created}</p>
+              <p>name: ${task.name}</p>
+              <p>desc: ${task.description}</p>
+              <select class="debug" data-id="${task.id}" oninput="_.module.nabnak.fn.task.onStatusChange(this)">
+                <option${task.status === mod.schema.enum.status.todo ? ' selected' : ''}>${mod.schema.enum.status.todo}</option>
+                <option${task.status === mod.schema.enum.status.inprogress ? ' selected' : ''}>${mod.schema.enum.status.inprogress}</option>
+                <option${task.status === mod.schema.enum.status.done ? ' selected' : ''}>${mod.schema.enum.status.done}</option>
+              </select>
+            </div>
+            
+            `
+          }
+          return string
+        }
       },
       // putting this select project pattern on hold for now
       project_args_on_hold: (args) => {
@@ -287,6 +321,41 @@ _.module.nabnak = {
         } break
       }
     },
+    /*
+      the structure of these props are HORRIBLE
+      - fn.buildHtml.projects
+      - fn.task.onStatusChange
+      - fn.onSubmit.projectCreate
+      - fn.setCss
+      - fn.command...
+      - schema.enum
+      - form.project.fields,  form.task.fields
+      - fn.onProjectClick
+      
+      its all spur of the moment type shit. I have to look up EVERYTHING is I want to reference something, nothing
+      can be assumed like this
+      once a few more things are added, we can sit down and reorganize
+    */
+    task: {
+      onStatusChange: (e) => {
+        // requires an active project for this to work as is
+        _.logger.log(`nabnak.fn.task.onStatusChange: status changed!`,_.logger.level.debug,e)
+        const dom = _.module.nabnak
+        const id = e.getAttribute('data-id')
+        const task = dom.data.selectedProject.tasks.find(x => x.id === id)
+        const previousStatus = task.status
+        if (!task) {
+          _.logger.log(`nabnak.fn.task.onStatusChange: failed to find task via id '${id}'`,_.logger.level.warn,e);return
+        }
+        task.status = e.value
+        _.logger.log(`task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc            task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc`)
+        // set this as the active task so rerender shows it properly
+        dom.data.selectedTask = task
+        // you know, we could just do render() and switch up the view according to 'state' like we're doing now
+        dom.fn.render.home()
+      }
+    },
+    // the idea here is that these are callbacks called from outside this module
     onSubmit: {
       projectCreate: (args) => {
         _.logger.log('nabnak.fn.onSubmit.projectCreate: project submitted!',_.logger.level.debug, args)
@@ -368,6 +437,10 @@ _.module.nabnak = {
       }
       .nabnak .home .project-container .done-col {
         border: 1px solid black;
+      }
+      .nabnak .home .task {
+        border: 1px solid white;
+        margin: 6px;
       }
       `
       document.head.append(style)
@@ -465,7 +538,7 @@ _.module.nabnak = {
         acceptanceCriteria: { type: 'textarea', displayName: 'Acceptance Criteria' },
         // had to set these options manually due to circular reference(or not yet initialized) error
         status: { type: 'select', required: true, options: ['todo','inprogress','done'] },
-        priority: { type: 'select', required: true, options: ['low','medium','high'] }
+        priority: { type: 'select', options: ['low','medium','high'] }
       }
     }
   },

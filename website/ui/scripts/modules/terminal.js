@@ -378,8 +378,9 @@ _.module.terminal = {
           ],null,formEl)
         }
         if (field.type === 'select') {
-          //if (field.required) { field.value = field.options[0] }
-          field.value = field.options[0] // screw it, always set a default
+          // re-enabled the required=true set default logic. having everything default to priority=low kinda sucks
+          if (field.required) { field.value = field.options[0] }
+          //field.value = field.options[0] // screw it, always set a default
           const select = _.fn.createElement('select',[
             {name:'class',val:`form-${prop}`},
             // element.value should work
