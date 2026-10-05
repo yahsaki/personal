@@ -109,7 +109,7 @@ html {
 }
 .base-container {
   display: grid;
-  grid-template-columns: repeat(19, minmax(50px, auto));
+  grid-template-columns: repeat(19, 1fr);
   border 1px solid black;
   column-gap: 2px;
   row-gap: 2px;
@@ -167,6 +167,8 @@ html {
     terminal is 70%
     tester is 30%
   */
+  // tried to add 'width:${window.innerWidth / 100 * 30}px' to fix smaller containers taking up too much space problems but it
+  // didnt work
   document.querySelector('.base-section-content').setAttribute('style', `height:${window.innerHeight / 100 * 80}px;`)
   //document.querySelector('.base-section-text-scroller0').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
   //document.querySelector('.base-section-text-scroller1').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)

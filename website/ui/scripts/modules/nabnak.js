@@ -348,7 +348,7 @@ _.module.nabnak = {
           _.logger.log(`nabnak.fn.task.onStatusChange: failed to find task via id '${id}'`,_.logger.level.warn,e);return
         }
         task.status = e.value
-        _.logger.log(`task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc            task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc`)
+        _.logger.log(`task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc`)
         // set this as the active task so rerender shows it properly
         dom.data.selectedTask = task
         // you know, we could just do render() and switch up the view according to 'state' like we're doing now

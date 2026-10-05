@@ -110,7 +110,8 @@ _.module.terminal = {
     help: what you literally just entered
     kawaru: convert romanji to hiragana/katakana
     tester: testing
-    exit: switch back command(CMD) mode
+    exit: switch back command(CMD) mode 
+
           `)
         )
       },
