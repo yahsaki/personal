@@ -137,7 +137,7 @@ _.module.nabnak = {
 
         let string = `
         <div class="project-title-container">
-          <h1>Project Name: ${project.name}</h1>
+          <h1>Project Name: ${project.name}, task count: ${project.tasks.length}</h1>
         </div>
         <div class="tasks-container">
           <div class="todo-col">
@@ -186,10 +186,25 @@ _.module.nabnak = {
           const mod = _.module.nabnak
           _.logger.log('select project called!',_.logger.level.debug, index)
           const project = mod.data.projects[index]
-          if (project) {
-            mod.data.selectedProject = project
-            mod.fn.render.home()
+          if (!project) {
+            _.logger.log(`no project found at index ${index}`,_.logger.level.warn);return
           }
+          mod.data.selectedProject = project
+          mod.fn.render.home()
+        },
+        task: (index) => {
+          const mod = _.module.nabnak
+          if (!mod.data.selectedProject) {
+            _.logger.log(`select a project before selecting a task`,_.logger.level.warn);return
+          }
+          const task = mod.data.selectedProject.tasks[index]
+          if (!task) {
+            _.logger.log(`no task found at index ${index}`,_.logger.level.warn);return
+          }
+          mod.data.selectedTask = task
+          // we dont have any other views yet lol
+          // TODO: change(or create) this view if needed
+          mod.fn.render.home()
         }
       },
       home: () => {
@@ -214,8 +229,16 @@ _.module.nabnak = {
             callbackName: 'projectCreate'
           })
         },
-        task: (args) => {
-
+        task: () => {
+          const mod = _.module.nabnak
+          if (!mod.data.selectedProject) {
+            _.logger.log(`select project first. I guess we can just let you select project during task creation`,_.logger.level.warn)
+          }
+          _.form.load({
+            title: 'Create Task',
+            form: mod.form.task,
+            callback: mod.fn.onSubmit.taskCreate,
+          })
         }
       }
     },
@@ -238,6 +261,9 @@ _.module.nabnak = {
           switch (args[1]) {
             case 'project': {
               _.module.nabnak.fn.command.create.project()
+            } break
+            case 'task': {
+              _.module.nabnak.fn.command.create.task()
             } break
             default: {
               _.logger.log(`invalid create argument '${args[1]}'. see help for details(doesnt exist yet)`,_.logger.level.warn)
@@ -279,6 +305,30 @@ _.module.nabnak = {
         _.module.nabnak.data.projects.push(project)
         _.logger.log(`nabnak.onSubmit.projectCreate: project '${project.name}' created`)
         _.module.nabnak.fn.save()
+        // eehhhh not sure if a rerender is triggered after this but im putting this here anyway
+        _.module.nabnak.fn.render.home()
+      },
+      taskCreate: (args) => {
+        _.logger.log('nabnak.fn.onSubmit.projectCreate: task submitted!',_.logger.level.debug, args)
+        const mod = _.module.nabnak
+        const task = {...mod.schema.task}
+        const date = new Date()
+        task.id = crypto.randomUUID() // we technically dont need these yet which is crazy
+        task.name = args.name.value
+        task.description = args.description.value
+        task.acceptanceCriteria = args.acceptanceCriteria.value
+        task.status = args.status.value
+        task.priority = args.priority.value
+        if (args.tags.value.length) {
+          task.tags = args.tags.value.split(',')
+        }
+        task.date_created = date.toISOString()
+        task.date_updated = date.toISOString()
+
+        mod.data.selectedProject.tasks.push(task)
+        _.logger.log(`nabnak.onSubmit.taskCreate: task '${task.name}' created`)
+        mod.fn.save()
+        mod.fn.render.home()
       }
     },
     setCss: () => {
@@ -311,13 +361,13 @@ _.module.nabnak = {
         grid-template-columns: 1fr 1fr 1fr;
       }
       .nabnak .home .project-container .todo-col {
-        border: 1px black;
+        border: 1px solid black;
       }
       .nabnak .home .project-container .inprogress-col {
-        border: 1px black;
+        border: 1px solid black;
       }
       .nabnak .home .project-container .done-col {
-        border: 1px black;
+        border: 1px solid black;
       }
       `
       document.head.append(style)
@@ -354,6 +404,8 @@ _.module.nabnak = {
       date_updated: null,
       name: null,
       description: null,
+      // 261004: dont like the idea of moving the actual task object between .tasks and .groups so just put
+      // a super shallow copy in groups instead, if we even implement this thing. still not a fan yet
       groups: [],
       tasks: [],
       tags: [],
@@ -402,15 +454,18 @@ _.module.nabnak = {
       },
     },
     task: {
+      // think we need a 'date when this needs to be completed' field. yeah I actually really like that, we could put
+      // on the home page all the tasks that are due soon(and late). ah yeah 'date_due'
       fields: {
-        projectId: { type: 'hidden' }, // we technically dont need this field in schema since tasks always live in project
+        // removed for now but I do like the idea of being able to create a task without an active project
+        //projectId: { type: 'hidden' }, // we technically dont need this field in schema since tasks always live in project
         name: { type: 'text', required: true },
         description: { type: 'text' },
         tags: { type: 'tags' },
         acceptanceCriteria: { type: 'textarea', displayName: 'Acceptance Criteria' },
-        // had to set these values manually due to circular reference(or not yet initialized) error
-        status: { type: 'select', required: true, values: ['todo','inprogress','done'] },
-        priority: { type: 'select', required: true, values: ['low','medium','high'] }
+        // had to set these options manually due to circular reference(or not yet initialized) error
+        status: { type: 'select', required: true, options: ['todo','inprogress','done'] },
+        priority: { type: 'select', required: true, options: ['low','medium','high'] }
       }
     }
   },

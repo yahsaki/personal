@@ -22,6 +22,31 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+* I think at some point(maybe soon) we're going to need ability to sort tasks
+- add 'date_due' field to task. im thinkin the date select field is 3 DDLs with year-month-day values. easy enuf
+  y<ddl>m<ddl>d<ddl>, barely any bigger than the default input length if so
+- when running command 'help' during terminal mode, all tool's help functions should be called via:
+  `
+  for (let moduleName in _.module) {
+    if (typeof _.module[moduleName].fn.help !== 'function') {
+      log('module <name> doesnt have a help function dip dong');continue
+    }
+    _.module[moduleName].fn.help()
+  }
+  `
+  pondered changing the help command to return text but screw it, just call it for now and let them spit out as is
+- implement stopwatch module
+  - stopwatch sets increments via 1s, 1m, 1h, 1d(too much)
+  - will need to verify audio is running
+  - ex 'stopwatch "cook potatoes" 1h'
+- implement module.todo.
+  - was wanting every day/7day/30day setup but for now, just log what you did everyday in a dropdownlist item like
+    format so we can consistently track and report on that data later
+  - the reason for leaving out day segment increments is due to which calendar to follow
+  - should be painfully simple, mostly if not all(in the beginning) cli based
+- I want music like Xoark and Xoark on random, all metadata and names purged. when you click play it selects randomly.
+  no way to select a track or even go next, just play and pause
+  NOTE: we could... incorporate our entire bag(m3) into this... holy mother of comolies
 - change all css class to have module name prepended to it, so instead of '.error', its '.terminal .error', etc
 - hope this already isnt in here. regarding tags, we intend to have views dynamically render depending on tagged content,
   like projects being tagged 'type-personal', 'type-commercial', then we could create a dynamic view like,
@@ -86,3 +111,10 @@ form workflow(in this example lets use create project):
 - nabnak handles the forwarded input, maps ['create', 'project'] to fn.command.create.project() rudamentarily
 - create.project() passes the project form and a callback to _.form.load(back to terminal lol)
 - 
+
+dude, M3... music metadata management right into main website.... WTF MAN
+- metadata itll only run locally... but I really like the idea of putting my library up somewhere
+  - if we put it remotely, we could generate playlists on the fly(as in the actual data, not just a list)
+- configuration thats only saved to storage would control how M3 works so no unnecessary settings will make it into
+  versioning
+  why has this never occurred to me? we have some serious expanding of how local storage works soon

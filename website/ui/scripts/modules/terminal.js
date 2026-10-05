@@ -351,18 +351,44 @@ _.module.terminal = {
       _.fn.createElement('br',[],null,formEl)
       for (let prop in _.form.current.fields) {
         const field = _.form.current.fields[prop]
+        // I set field value='' instead of value ?? '' because this field prop is being referenced elsewhere
+        if ((field.type === 'text' || field.type === 'tags' || field.type === 'textarea') && !field.value) {
+          field.value = ''
+        }
         _.fn.createElement('span',[],`${prop}: `,formEl)
         // I want some way to auto update the _.current form on change. lets do that
         if (field.type === 'text' || field.type === 'tags') {
-          if (!field.value) { field.value = ''}
           const input = _.fn.createElement('input',[
             {name:'type',val:'text'},
-            {name:'data-name',val:prop}, // being used to map html element to js object
-            {name:'class',val:`form-${prop}`}, // worthless at teh moment
+            //{name:'data-name',val:prop}, // being used to map html element to js object. // 261004: no its not
+            {name:'class',val:`form-${prop}`}, // worthless at teh moment // 261004: no its not
             {name:'value',val:field.value},
             {name:'oninput',val:`_.form.onFieldChange('${prop}')`}// works!
           ],null,formEl)
           //input.addEventListener('input', _.form.onFieldChange)
+        }
+        // we 'can' merge this with type:text but I aint
+        if (field.type === 'textarea') {
+          _.fn.createElement('input',[
+            {name:'type',val:'textarea'},
+            {name:'rows',val:'5'},{name:'cols',val:'20'},
+            {name:'class',val:`form-${prop}`},
+            {name:'value',val:field.value},
+            {name:'oninput',val:`_.form.onFieldChange('${prop}')`}// works!
+          ],null,formEl)
+        }
+        if (field.type === 'select') {
+          //if (field.required) { field.value = field.options[0] }
+          field.value = field.options[0] // screw it, always set a default
+          const select = _.fn.createElement('select',[
+            {name:'class',val:`form-${prop}`},
+            // element.value should work
+            // element.options[element.selectedIndex].value is a thing too
+            {name:'value',val:field.value},
+            // from documentation, change and input event do the exact same thing
+            {name:'oninput',val:`_.form.onFieldChange('${prop}')`}
+          ],null,formEl)
+          for (let i in field.options) { _.fn.createElement('option',[],field.options[i],select) }
         }
         _.fn.createElement('br',[],null,formEl)
       }
