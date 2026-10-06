@@ -44,13 +44,27 @@ _.module.nabnak = {
     },
     onProjectClick: (id) => {
       _.logger.log('project clicked',_.logger.level.debug, id)
-      const project = _.module.nabnak.data.projects.find(x => x.id === id)
+      const mod = _.module.nabnak
+      const project = mod.data.projects.find(x => x.id === id)
       if (!project) {
         _.logger.log(`nabnak.fn.onProjectClick: failed to find project by id '${id}'`,_.logger.level.warn);return
       }
-      _.module.nabnak.data.selectedProject = project
-      // temp: rerender projects page. supposed to render selected project page
-      _.logger.log(`project '${project.name}' selected`)
+      if (mod.data.selectedProject?.id === project.id) {
+        mod.data.selectedProject = null
+        mod.data.selectedGroup = null
+        mod.data.selectedTask = null
+        _.logger.log(`project '${project.name}' un-selected`)
+      } else if (mod.data.selectedProject) {
+        mod.data.selectedProject = project
+        // switching project, unselect other project's group/task
+        mod.data.selectedGroup = null
+        mod.data.selectedTask = null
+        _.logger.log(`switched to project '${project.name}'`)
+      } else {
+        mod.data.selectedProject = project
+        _.logger.log(`project '${project.name}' selected`)
+      }
+      
       _.module.nabnak.fn.render.home()
     },
     onGroupClick: (id) => {
@@ -81,6 +95,7 @@ _.module.nabnak = {
         
         const projectsEl = mod.fn.buildHtml.projects()
         const groupsEl = mod.fn.buildHtml.groups(mod.data.selectedProject)
+        const rightViewHeaderEl = mod.fn.buildHtml.rightViewHeader()
         const projectEl = mod.fn.buildHtml.project(mod.data.selectedProject)
 
         _.fn.clear(_.module.nabnak.data.parentSelector)
@@ -103,6 +118,7 @@ _.module.nabnak = {
         const col1 = document.createElement('div')
         col1.setAttribute('class', 'col-1')
         wrapper.append(col1)
+        col1.append(rightViewHeaderEl)
         col1.append(projectEl)
         
       }
@@ -172,6 +188,27 @@ _.module.nabnak = {
           return string
         }
       },
+      rightViewHeader: () => {
+        // 261006: clusterjam, all this render code needs to be refactored hardcore
+        const mod = _.module.nabnak
+        const html = document.createElement('div')
+        html.setAttribute('class', 'col1-header-container')
+        html.innerHTML = `
+        <div class="col1-header">
+          <div class="info-row">
+            <div class="row-0">PROJECT: ${mod.data.selectedProject ? mod.data.selectedProject.name : ''}</div>
+            <div class="row-1">GROUP: ${mod.data.selectedGroup ? mod.data.selectedGroup.name : ''}</div>
+            <div class="row-2">TASK: ${mod.data.selectedTask ? mod.data.selectedTask.name : ''}</div>
+          </div>
+          <div class="control-row">
+            <button onclick="_.module.nabnak.fn.command.create.project()">Create Project</button>
+            <button onclick="_.module.nabnak.fn.command.create.group()">Create Group</button>
+            <button onclick="_.module.nabnak.fn.command.create.task()">Create Task</button>
+          </div>
+        </div>  
+        `
+        return html
+      },
       project: (project) => {
         // thinking about it, a different fn should interface with elements returning an index. only private fns
         // should call this fn which should always have the projectId. lets see how this goes
@@ -204,9 +241,6 @@ _.module.nabnak = {
         const doneTasks = project.tasks.filter(x => x.status === mod.schema.enum.status.done)
 
         let string = `
-        <div class="project-title-container">
-          <h1>Project Name: ${project.name}, task count: ${project.tasks.length}</h1>
-        </div>
         <div class="tasks-container">
           <div class="task-col todo-col">
             <h1>TODO</h1>
@@ -239,6 +273,7 @@ _.module.nabnak = {
             string += `
             <div class="task">
               <p>created: ${task.date_created}</p>
+              <p>tags: ${task.tags.join(',')}</p>
               <p>name: ${task.name}</p>
               <p>desc: ${task.description}</p>
               <select class="debug" data-id="${task.id}" oninput="_.module.nabnak.fn.task.onStatusChange(this)">
@@ -253,23 +288,6 @@ _.module.nabnak = {
           return string
         }
       },
-      // putting this select project pattern on hold for now
-      project_args_on_hold: (args) => {
-        // can select project(or tasks) by projectId or index
-        const projectId = args.projectId
-        const index = parseInt(args.index)
-        let project
-        if (projectId) {
-          project = _.module.nabnak.data.projects.find(x => x.id === projectId)
-        }
-        if (!isNaN(index) && !project) {
-          project = _.module.nabnak.data.projects[index]
-        }
-        // whhhooo I dont like this code
-        if (!project) {
-          _.logger.log(`failed to find project from one of these arguments: projectId: ${projectId}, index: ${index}`,_.logger.level.warn);return
-        }
-      }
     },
     // sold
     command: {
@@ -288,6 +306,7 @@ _.module.nabnak = {
             _.logger.log(`no project found at index ${index}`,_.logger.level.warn);return
           }
           mod.data.selectedProject = project
+          _.logger.log(`project '${project.name}' selected`)
           mod.fn.render.home()
         },
         group: (index) => {
@@ -296,6 +315,7 @@ _.module.nabnak = {
           const group = mod.data.selectedProject.groups[index]
           if (!group) { _.logger.log(`no group found at index ${index}`,_.logger.level.warn);return }
           mod.data.selectedGroup = group
+          _.logger.log(`group '${group.name}' selected`)
           mod.fn.render.home()
         },
         task: (index) => {
@@ -304,6 +324,7 @@ _.module.nabnak = {
           const task = mod.data.selectedProject.tasks[index]
           if (!task) { _.logger.log(`no task found at index ${index}`,_.logger.level.warn);return }
           mod.data.selectedTask = task
+          _.logger.log(`task '${task.name}' selected`)
           // we dont have any other views yet lol
           // TODO: change(or create) this view if needed
           mod.fn.render.home()
@@ -346,6 +367,7 @@ _.module.nabnak = {
           const mod = _.module.nabnak
           if (!mod.data.selectedProject) {
             _.logger.log(`select project first. I guess we can just let you select project during task creation`,_.logger.level.warn)
+            return
           }
           _.form.load({
             title: 'Create Task',
@@ -391,6 +413,10 @@ _.module.nabnak = {
             case 'project': {
               if (!args[2]) { _.logger.log(`select argument requires project id as third argument. see help for details(doesnt exist yet)`,_.logger.level.warn);return }
               _.module.nabnak.fn.command.select.project(args[2])
+            } break
+            case 'group': {
+              if (!args[2]) { _.logger.log(`select argument requires project id as third argument. see help for details(doesnt exist yet)`,_.logger.level.warn);return }
+              _.module.nabnak.fn.command.select.group(args[2])
             } break
             default: {
               _.logger.log(`invalid select argument '${args[1]}'. see help for details(doesnt exist yet)`,_.logger.level.warn)
@@ -508,7 +534,9 @@ _.module.nabnak = {
       const style = document.createElement('style')
       style.setAttribute('data-id', _.module.nabnak.data.id)
       style.innerText = `
-      .nabnak {}
+      .nabnak {
+        height: inherit;
+      }
       .nabnak ul {
         padding: 0;
       }
@@ -531,19 +559,42 @@ _.module.nabnak = {
       .nabnak .home {
         display: grid;
         grid-template-columns: 1fr 8fr;
+        height: inherit;
       }
       .nabnak .home .col-0 {
         border-right: 1px solid red;
         overflow-x: hidden;
-      }
-      .nabnak .home .col-1 {
-      
+        height: inherit;
       }
       .nabnak .home .projects-container {
+        height: 50%;
+      }
+      .nabnak .home .groups-container {
+        height: 50%;
+      }
+    
+      .nabnak .home .col-1 {
+        height: inherit;
+      }
+      .nabnak .home .col-1 .col1-header-container {}
+      .nabnak .home .col-1 .col1-header-container .col1-header {}
+      .nabnak .home .col-1 .col1-header-container .col1-header .info-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        overflow: hidden;
+      }
+      .nabnak .home .col-1 .col1-header-container .col1-header .info-row .row-0 {
         
       }
-      .nabnak .home .project-container {
+      .nabnak .home .col-1 .col1-header-container .col1-header .info-row .row-1 {
         
+      }
+      .nabnak .home .col-1 .col1-header-container .col1-header .info-row .row-2 {
+        
+      }
+
+      .nabnak .home .project-container {
+        height: inherit;
       }
       .nabnak .home .tasks-container {
         display: grid;
