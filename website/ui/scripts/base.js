@@ -212,8 +212,7 @@ html {
     // too
 
     _.module.textScroller.load()
-    // this line is working, just keeping cli output silent
-    //_.module.textScroller.fn.createTextScroller('.base-section-text-scroller0', data)
+    // note: temporary fetch code
     setTimeout(() => {
       fetch('/data/latest.json')
       .then(x => x.json())

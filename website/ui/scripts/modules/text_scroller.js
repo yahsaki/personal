@@ -133,8 +133,8 @@ _.module.textScroller = {
       const scrollMax = contentEl.scrollTopMax
       const intervalSpan = contentEl.clientWidth / _.module.textScroller.data.scrollSpeed
 
-      console.log('document.querySelector(`#text-scroller-' + instance.id + ' .text-scroller-content`)' + `.scrollTo({top: 0, left: 0, behavior: 'smooth'})`)
-      console.log('textScroller.animate: interval span', intervalSpan)
+      //console.log('document.querySelector(`#text-scroller-' + instance.id + ' .text-scroller-content`)' + `.scrollTo({top: 0, left: 0, behavior: 'smooth'})`)
+      //console.log('textScroller.animate: interval span', intervalSpan)
       instance.intervalId = setInterval(() => {
         position += _.module.textScroller.data.scrollPixelAmount
 
@@ -153,7 +153,7 @@ _.module.textScroller = {
     onAnimationCompleted: (instance) => {
       instance.index += 1
       if (!instance.data[instance.index]) {
-        console.log(`textScroller.fn.onAnimationCompleted: text scroller '${instance.id}' has completed rendering data ${instance.data.length} blobs. starting over`)
+        //console.log(`textScroller.fn.onAnimationCompleted: text scroller '${instance.id}' has completed rendering data ${instance.data.length} blobs. starting over`)
         instance.index = 0
         _.module.textScroller.fn.animate(instance)
       } else {
@@ -167,7 +167,7 @@ _.module.textScroller = {
     // instead
     scrollPixelAmount: 1,
     // lower = slower. naming+value doesnt make much sense but it works, dont know what else to name it
-    scrollSpeed: 3.5, 
+    scrollSpeed: 2.5, 
     // shiza, just realized we cant instantiate more than one terminal tool due to data.parentSelector, need something
     // like this for that to work
     instances: [],

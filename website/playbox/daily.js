@@ -15,8 +15,7 @@ const klaw = require('klaw')
   await util.delay(1000)
   buildDataFiles()
 })//()
-//runMeDaily()
-buildDataFiles()
+
 async function runMeDaily() {
   //await scraper.cisaCyberSecurity()
   //await scraper.cisaNews()
@@ -37,7 +36,7 @@ async function buildDataFiles() {
   // cves
   if (false) {
     const cves = aggregateCVEs()
-    fs.writeFileSync('cve.json', JSON.stringify(cves))
+    fs.writeFileSync('./data/cve.json', JSON.stringify(cves))
   }
 
   const date = new Date()
@@ -48,7 +47,7 @@ async function buildDataFiles() {
   let arr = []
   arr.push(await util.aggregate.generic('bleepingcomputer'))
   arr.push(await util.aggregate.generic('torrentfreak'))
-  arr.push(util.fs.readJson('cve.json').data)
+  arr.push(util.fs.readJson('./data/cve.json').data)
   // build latest
   for (let i in arr) {
     const articles = arr[i]
@@ -68,7 +67,7 @@ async function buildDataFiles() {
     }
   }
   console.log('latest data count', latest.data.length)
-  fs.writeFileSync('latest.json', JSON.stringify(latest))
+  fs.writeFileSync('../ui/data/latest.json', JSON.stringify(latest))
   // build rest
   const all = {
     date: date.toISOString(),
@@ -81,7 +80,7 @@ async function buildDataFiles() {
     }
   }
   console.log(all.data.length)
-  fs.writeFileSync('all.json', JSON.stringify(all))
+  fs.writeFileSync('../ui/data/all.json', JSON.stringify(all))
   // I want latest bleeping :(
 }
 

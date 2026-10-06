@@ -22,6 +22,13 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- implement command to stop text scrollers(release data for the most part). now I dont want to leave my site on
+- add .index(nullable int) to all everything
+- change all element.innerText to element.textContent
+- we got some seriously borked up articles. we need a way to skip to next article
+- implement drag and drop for tasks(update statuses)
+- in order to streamline saving/loading/backing up state, create a mod.data.localStorage['key'] prop pattern so we can iterate
+  all modules data during export/import, ex mod.data.localStorage.settings, mod.data.localStorage.projects, etc
 - change the border color of tasks by priority(low=white, medium=pink, high=red)
 - remove those embedded ad articles from bleeping scraper
 - implement update project/task
@@ -64,24 +71,24 @@ todo:
   we would want some indication of so just aggregate all ideas here
 - create fn to download storage data as json
 - save command history
-- create a form workflow like:
+- add 'killall' command that literally deletes everything, would be funny
+- add settings that save to browserdb
+  - show debug output
+- music player!(place in top status bar)
+- BUG: the old implementation of terminal's argument splitting did not support quoted arguments: must fix
+- integrate tester
+
+
+completed:
+- 261006: pull CVEs manually from git repo and manually generate some consumable data from it. automate this someday
+- integrate nabnak view... up to whatever we have built... to a certain degree(what the F does this mean)
+- 261003: create a form workflow like:
   - set up form in module(IE create project form in nabnak, two fields)
   - send form schema to terminal to render it. terminal keeps data saved and whatnot
   - once form passes requirements set by the original schema, completed form gets sent back to module
   this is a replacement for cli workflows, IE, user enters 'create project' command, terminal prompts user for
   name, whiles it until satisfactory response, continues to next field description until completed. decided
   to move forward with form due to speed of implementation
-- add 'killall' command that literally deletes everything, would be funny
-- add settings that save to browserdb
-  - show debug output
-- music player!(place in top status bar)
-- BUG: the old implementation of terminal's argument splitting did not support quoted arguments: must fix
-- pull CVEs manually from git repo and manually generate some consumable data from it. automate this someday
-- integrate tester
-- integrate nabnak view... up to whatever we have built... to a certain degree(what the F does this mean)
-
-
-completed:
 - 261001: fix title display. currently hiding it because I goofed it with absolute positioning in a setup like this. dont
   want to gut it completely at this point
 - 261002: need to implement a way for other tools to output logs to terminal. a smidge harder now that its not baked into the
