@@ -1,5 +1,6 @@
 node_modules
 website/playbox/data/
+website/ui/data/
 website/ui/*.json
 website/playbox/hydrate/*.json
 temp

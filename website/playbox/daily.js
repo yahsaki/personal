@@ -10,7 +10,13 @@ const scraper = require('./toys/scraper')
 const zlib = require('zlib')
 const klaw = require('klaw')
 
-runMeDaily()
+;(async () => {
+  await runMeDaily()
+  await util.delay(1000)
+  buildDataFiles()
+})//()
+//runMeDaily()
+buildDataFiles()
 async function runMeDaily() {
   //await scraper.cisaCyberSecurity()
   //await scraper.cisaNews()
@@ -21,9 +27,114 @@ async function runMeDaily() {
   //await scraper.cve()
   await scraper.bleeper()
   await scraper.torrentFreak()
-  await util.delay(1000)
+  //await util.delay(1000)
   
-  await aggregate()
+  //await aggregate()
+}
+
+// TODO: write to /ui directory directly
+async function buildDataFiles() {
+  // cves
+  if (false) {
+    const cves = aggregateCVEs()
+    fs.writeFileSync('cve.json', JSON.stringify(cves))
+  }
+
+  const date = new Date()
+  const latest = {
+    date: date.toISOString(),
+    data: []
+  }
+  let arr = []
+  arr.push(await util.aggregate.generic('bleepingcomputer'))
+  arr.push(await util.aggregate.generic('torrentfreak'))
+  arr.push(util.fs.readJson('cve.json').data)
+  // build latest
+  for (let i in arr) {
+    const articles = arr[i]
+    console.log(`article count: ${articles.length}`)
+    let limit = 10 // top ten of whatever is latest por favaor onegai
+    for (let j = articles.length-1; j >= 0; j--) {
+      if (limit === 0) { continue }
+      const article = articles[j]
+      if (article.title.startsWith('Top 10')) {
+        // I dont want it. need to filter it out on the scrape step
+        continue
+      }
+      console.log('article', article)
+      latest.data.push(article)
+      console.log(`article [${article.date}]'${article.title}' added to latest`)
+      limit = limit - 1
+    }
+  }
+  console.log('latest data count', latest.data.length)
+  fs.writeFileSync('latest.json', JSON.stringify(latest))
+  // build rest
+  const all = {
+    date: date.toISOString(),
+    data: []
+  }
+  for (let i in arr) {
+    const articles = arr[i]
+    for (let j in articles) {
+      all.data.push(articles[j])
+    }
+  }
+  console.log(all.data.length)
+  fs.writeFileSync('all.json', JSON.stringify(all))
+  // I want latest bleeping :(
+}
+
+/*
+  261005: the previous method of fetching a zip of latest CVEs from nvd.nist.gov is beyond gone. they migrated CVEs to
+  github, here(I cant find the link atm lol)
+  so instead of building a full automation tool, im just plucking whatever the latest release is at the time manually and
+  dumping it here for this fn to access and aggregate. obviously automate this at some point
+*/
+function aggregateCVEs() {
+  console.log('20261005: only fetching 2026 cves in this fn at the moment. we\'ll want everything at some point')
+  const response = {
+    name: 'CVEs',
+    data: [],
+  }
+  const cveDir = path.join(__dirname, 'data/cves/2026')
+  const readdirRes = fs.readdirSync(cveDir,{recursive:true})
+  console.log('readdir', readdirRes[readdirRes.length - 2])
+  if (!readdirRes.length) {
+    console.log(`failed to find cves in dir ${cveDir}`);return response
+  }
+
+  let rejected = 0
+  let noDescription = 0
+  let invalidJson = 0
+  for (let i in readdirRes) {
+    const filePath = path.join(cveDir, readdirRes[i])
+    const pathObj = path.parse(filePath)
+    if (pathObj.ext.toLowerCase() !== '.json') {
+      continue
+    }
+
+    console.log(filePath)
+    let cve
+    try {
+      cve = JSON.parse(fs.readFileSync(filePath))
+    } catch (err) {
+      invalidJson += 1
+      continue
+    }
+    
+    if (cve.cveMetadata.state === 'REJECTED') { rejected += 1;continue }
+    if (!cve.containers.cna.descriptions) { noDescription += 1;continue }
+    response.data.push({
+      title: `${cve.cveMetadata.cveId}: ${cve.containers.cna.title}`,
+      date: new Date(cve.cveMetadata.datePublished).toISOString(),
+      // i dont care if they have other languages until I do
+      text: cve.containers.cna.descriptions[0].value,
+    })
+  }
+  response.data = response.data.sort(util.comparer.date)
+  console.log(`${response.data.length} cves aggregated, ${rejected} rejected, ${noDescription} no descriptions, ${invalidJson} invalid json`)
+  return response
 }
 
 //aggregate()

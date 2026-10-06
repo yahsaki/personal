@@ -22,6 +22,8 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- change the border color of tasks by priority(low=white, medium=pink, high=red)
+- remove those embedded ad articles from bleeping scraper
 - implement update project/task
 * I think at some point(maybe soon) we're going to need ability to sort tasks
 - add 'date_due' field to task. im thinkin the date select field is 3 DDLs with year-month-day values. easy enuf
@@ -100,6 +102,8 @@ completed:
 - design how base, views and tools interact with each other
 
 notes:
+- 261006: mmmmmmm ui/data/all.json is way too big: need to shuffle and rotate old data at the server level
+- 261005: stop using <pre>'s(especially in terminal), they are the devil
 - 261002: going to start setting 'this' refs in tools/views at the start of functions. makes code cleaner and easier to
   update for bigger modules like nabnak and tester
 how commands should work:

@@ -211,28 +211,25 @@ html {
     // command or two to make that work? lets do that. removing options param for now, backing out of encapsulated args
     // too
 
-    // was going to whip up test data but its so easy to fetch locally that I shouldnt do it. lets get our articles
-    // primed instead
-    const data = [
-      {
-        title: '#0 Lorem ipsum dolor sit amet',
-        date: '2023-05-31T07:00:00.000Z',
-        content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-      },
-      {
-        date: '2023-05-30T07:00:00.000Z',
-        title: '#1 Lorem ipsum dolor sit amet',
-        content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-      },
-      {
-        date: '2023-05-29T07:00:00.000Z',
-        title: '#3 Lorem ipsum dolor sit amet',
-        content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-      },
-    ]
     _.module.textScroller.load()
     // this line is working, just keeping cli output silent
     //_.module.textScroller.fn.createTextScroller('.base-section-text-scroller0', data)
+    setTimeout(() => {
+      fetch('/data/latest.json')
+      .then(x => x.json())
+      .then(x => {
+        console.log('got latest articles', x)
+        _.module.textScroller.fn.createTextScroller('.base-section-text-scroller0', _.fn.shuffle(x.data))
+      })
+    }, 500)
+    setTimeout(() => {
+      fetch('/data/all.json')
+      .then(x => x.json())
+      .then(x => {
+        console.log('got all articles', x)
+        _.module.textScroller.fn.createTextScroller('.base-section-text-scroller1', _.fn.shuffle(x.data))
+      })
+    }, 1000)
   } else {
     console.log(`terminal.buildBase: textScroller tool not loaded`)
   }

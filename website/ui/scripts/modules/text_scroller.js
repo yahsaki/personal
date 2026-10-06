@@ -65,7 +65,7 @@ _.module.textScroller = {
         errors.push(`data is empty`)
       }
       for (let i = 0; i < data.length; i++) {
-        if (!data[i].content?.length) {
+        if (!data[i].text?.length) {
           errors.push(`data point at index ${i} has no content(the only required field at the moment)`)
           break
         }
@@ -127,7 +127,7 @@ _.module.textScroller = {
           dateEl.innerText = blob.date
         }
       }
-      contentEl.innerText = blob.content
+      contentEl.innerText = blob.text
 
       let position = 0
       const scrollMax = contentEl.scrollTopMax
@@ -146,7 +146,7 @@ _.module.textScroller = {
         //console.log(`scrollMax: ${scrollMax}, position: ${position}, intervalSpan: ${intervalSpan}`)
         if (position >= scrollMax) {
           clearInterval(instance.intervalId)
-          setTimeout(() => { _.module.textScroller.fn.onAnimationCompleted(instance) }, 1000)
+          setTimeout(() => { _.module.textScroller.fn.onAnimationCompleted(instance) }, 2000)
         }
       }, intervalSpan)
     },
@@ -167,7 +167,7 @@ _.module.textScroller = {
     // instead
     scrollPixelAmount: 1,
     // lower = slower. naming+value doesnt make much sense but it works, dont know what else to name it
-    scrollSpeed: 5.3, 
+    scrollSpeed: 3.5, 
     // shiza, just realized we cant instantiate more than one terminal tool due to data.parentSelector, need something
     // like this for that to work
     instances: [],
