@@ -341,6 +341,7 @@ _.module.terminal = {
       return errors
     },
     render: () => {
+      _.logger.log(`terminal.form.render: rendering form`,_.logger.level.debug,_.form.current.fields)
       // called when the html is built, I guess
       
       // going to attempt to do this without event listeners
@@ -390,7 +391,18 @@ _.module.terminal = {
             // from documentation, change and input event do the exact same thing
             {name:'oninput',val:`_.form.onFieldChange('${prop}')`}
           ],null,formEl)
-          for (let i in field.options) { _.fn.createElement('option',[],field.options[i],select) }
+          for (let i in field.options) { 
+            const option  = field.options[i]
+            if (typeof option === 'object') {
+              _.fn.createElement('option',[{name:'value',val:option.id}],option.name,select)
+            } else {
+              _.fn.createElement('option',[],field.options[i],select)
+            }
+            
+          }
+        }
+        if (field.type === 'hidden') {
+          _.logger.log(`encountered hidden field '${prop}' which we do nothing special with yet at the moment`,_.logger.level.debug,field)
         }
         _.fn.createElement('br',[],null,formEl)
       }
@@ -402,14 +414,19 @@ _.module.terminal = {
     },
     load: (args) => {
       // I dont know how to validate form schemas yet so I aint
-
+      if (typeof args.form.setup === 'function') {
+        // need to work on my relative argument referencing. i think migrating to classes will fix this
+        args.form.setup(args.form.fields)
+      } else {
+        _.logger.log(`form '${args.title}' does not have a setup function`)
+      }
       // rush job, could definitely lose something this way
       _.form.current = {
         title: args.title,
         // I only have a .fields prop in form so far, please note this truncation if this changes
         fields: args.form.fields,
         callback: args.callback,
-        callbackName: args.callbackName,
+        //callbackName: args.callbackName,
       }
       _.form.render()
     },
@@ -457,6 +474,8 @@ _.module.terminal = {
     onCancel: () => {
       _.logger.log(`form.onCancel: called`,_.logger.level.debug)
     },
+    // TODO: instead of referencing field types statically, we need to reference them from here, IE
+    // text, textarea, tags, hidden, select, etc
     schema: {
       inputField: { type:'text/number', required:false },
       enumField: { type:'list', required:true, options:[] }

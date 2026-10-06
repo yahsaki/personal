@@ -53,6 +53,24 @@ _.module.nabnak = {
       _.logger.log(`project '${project.name}' selected`)
       _.module.nabnak.fn.render.home()
     },
+    onGroupClick: (id) => {
+      _.logger.log('group clicked',_.logger.level.debug, id)
+      const mod = _.module.nabnak
+      if (!mod.data.selectedProject) { _.logger.log(`no project selected`,_.logger.level.warn);return }
+      const group = mod.data.selectedProject.groups.find(x => x.id === id)
+      if (!group) {
+        _.logger.log(`nabnak.fn.onGroupClick: failed to find group by id '${id}'`,_.logger.level.warn);return
+      }
+      if (mod.data.selectedGroup?.id === group.id) {
+        _.logger.log(`group '${group.name}' un-selected`)
+        mod.data.selectedGroup = null
+      } else {
+        _.logger.log(`group '${group.name}' selected`)
+        mod.data.selectedGroup = group
+      }
+      
+      mod.fn.render.home()
+    },
     // not sold on fn.render pattern yet
     render: {
       home: () => { // home = projects page for the most part
@@ -62,6 +80,7 @@ _.module.nabnak = {
         const parentEl = document.querySelector(mod.data.parentSelector)
         
         const projectsEl = mod.fn.buildHtml.projects()
+        const groupsEl = mod.fn.buildHtml.groups(mod.data.selectedProject)
         const projectEl = mod.fn.buildHtml.project(mod.data.selectedProject)
 
         _.fn.clear(_.module.nabnak.data.parentSelector)
@@ -73,9 +92,19 @@ _.module.nabnak = {
 
         const wrapper = document.createElement('div')
         wrapper.setAttribute('class', 'home')
-        wrapper.append(projectsEl)
-        wrapper.append(projectEl)
         html.append(wrapper)
+
+        const col0 = document.createElement('div')
+        col0.setAttribute('class', 'col-0')
+        wrapper.append(col0)
+        col0.append(projectsEl)
+        col0.append(groupsEl)
+
+        const col1 = document.createElement('div')
+        col1.setAttribute('class', 'col-1')
+        wrapper.append(col1)
+        col1.append(projectEl)
+        
       }
     },
     buildHtml: {
@@ -84,7 +113,7 @@ _.module.nabnak = {
         const html = document.createElement('div')
         html.setAttribute('class', 'projects-container')
         html.innerHTML = `
-        <b>COUNT: ${data.projects.length}</b>
+        <b>Projects: ${data.projects.length}</b>
         <ul>
         ${renderProjectList()}
         </ul>
@@ -104,6 +133,41 @@ _.module.nabnak = {
               <b>${i}</b>: ${project.name}
             </li>
             `
+          }
+          return string
+        }
+      },
+      groups: (project) => {
+        const data = _.module.nabnak.data
+        const html = document.createElement('div')
+        html.setAttribute('class', 'groups-container')
+        if (!project) {
+          html.innerHTML = `
+          <b>groups</b>
+          `
+          return html
+        }
+
+        html.innerHTML = `
+        <b>Groups: ${project.groups.length}</b>
+        <ul>${renderGroupsList()}</ul>
+        `
+        return html
+
+        function renderGroupsList() {
+          let string = ''
+          for (let i in project.groups) {
+            const group = project.groups[i]
+            let className = 'not-selected'
+            if (group.id === data.selectedGroup?.id) {
+              className = 'selected'
+            }
+            string += `
+            <li class="${className}" onclick="_.module.nabnak.fn.onGroupClick('${group.id}')" data-projectId="${project.id}" data-tempId="${i}">
+              <b>${i}</b>: ${group.name}
+            </li>
+            `
+            
           }
           return string
         }
@@ -226,15 +290,19 @@ _.module.nabnak = {
           mod.data.selectedProject = project
           mod.fn.render.home()
         },
+        group: (index) => {
+          const mod = _.module.nabnak
+          if (!mod.data.selectedProject) { _.logger.log(`select a project`,_.logger.level.warn);return }
+          const group = mod.data.selectedProject.groups[index]
+          if (!group) { _.logger.log(`no group found at index ${index}`,_.logger.level.warn);return }
+          mod.data.selectedGroup = group
+          mod.fn.render.home()
+        },
         task: (index) => {
           const mod = _.module.nabnak
-          if (!mod.data.selectedProject) {
-            _.logger.log(`select a project before selecting a task`,_.logger.level.warn);return
-          }
+          if (!mod.data.selectedProject) { _.logger.log(`select a project`,_.logger.level.warn);return }
           const task = mod.data.selectedProject.tasks[index]
-          if (!task) {
-            _.logger.log(`no task found at index ${index}`,_.logger.level.warn);return
-          }
+          if (!task) { _.logger.log(`no task found at index ${index}`,_.logger.level.warn);return }
           mod.data.selectedTask = task
           // we dont have any other views yet lol
           // TODO: change(or create) this view if needed
@@ -260,8 +328,19 @@ _.module.nabnak = {
             // directly calling them, but callback fn gives me that just as well. I found no reason not to use callback
             // yet
             callback: _.module.nabnak.fn.onSubmit.projectCreate,
-            callbackName: 'projectCreate'
+            //callbackName: 'projectCreate'
           })
+        },
+        group: () => {
+          const mod = _.module.nabnak
+          if (!mod.data.selectedProject) {
+            _.logger.log(`select project first`,_.logger.level.warn);return
+          }
+          _.form.load(({
+            title: 'Create Group',
+            form: mod.form.group,
+            callback: mod.fn.onSubmit.groupCreate,
+          }))
         },
         task: () => {
           const mod = _.module.nabnak
@@ -277,7 +356,6 @@ _.module.nabnak = {
       }
     },
     handleInput: (args) => {
-      _.logger.log('nabnak.handleInput: unimplemented',_.logger.level.debug,args)
       // this is going to be pure slop for the first few iterations
       /*
         I could do something like this:
@@ -295,6 +373,9 @@ _.module.nabnak = {
           switch (args[1]) {
             case 'project': {
               _.module.nabnak.fn.command.create.project()
+            } break
+            case 'group': {
+              _.module.nabnak.fn.command.create.group ()
             } break
             case 'task': {
               _.module.nabnak.fn.command.create.task()
@@ -377,6 +458,28 @@ _.module.nabnak = {
         // eehhhh not sure if a rerender is triggered after this but im putting this here anyway
         _.module.nabnak.fn.render.home()
       },
+      groupCreate: (args) => {
+        _.logger.log('nabnak.fn.onSubmit.groupCreate: group submitted!',_.logger.level.debug, args)
+        const mod = _.module.nabnak
+        if (!mod.data.selectedProject) {
+          _.logger.log(`nabnak.fn.onsubmit.groupCreate: no selected project`,_.logger.level.warn);return
+        }
+        const group = {...mod.schema.group}
+        const date = new Date()
+        group.id = crypto.randomUUID()
+        group.name = args.name.value
+        group.description = args.description.value
+        if (args.tags.value.length) {
+          // _.form handles cleaning up tags
+          project.tags = args.tags.value.split(',')
+        }
+        group.date_created = date.toISOString()
+        group.date_updated = date.toISOString()
+        mod.data.selectedProject.groups.push(group)
+        _.logger.log(`nabnak.fn.onSubmit.groupCreate: group '${group.name}' created`,_.logger.level.info,group)
+        mod.fn.save()
+        mod.fn.render.home()
+      },
       taskCreate: (args) => {
         _.logger.log('nabnak.fn.onSubmit.projectCreate: task submitted!',_.logger.level.debug, args)
         const mod = _.module.nabnak
@@ -406,11 +509,21 @@ _.module.nabnak = {
       style.setAttribute('data-id', _.module.nabnak.data.id)
       style.innerText = `
       .nabnak {}
-      .nabnak .projects-container ul li {
-        cursor: pointer;
+      .nabnak ul {
+        padding: 0;
       }
-      .nabnak .projects-container .selected {
+      .nabnak ul li {
+        cursor: pointer;
+        list-style-type: none;
+        padding-top:10px;
+        padding-bottom:10px;
+      }
+      .nabnak ul li:hover {
+        border: 1px solid red;
+      }
+      .nabnak ul .selected {
         text-decoration: underline;
+        font-weight: bold;
       }
       .nabnak .projects-container .not-selected {}
       .nabnak .project-container {}
@@ -419,8 +532,15 @@ _.module.nabnak = {
         display: grid;
         grid-template-columns: 1fr 8fr;
       }
-      .nabnak .home .projects-container {
+      .nabnak .home .col-0 {
         border-right: 1px solid red;
+        overflow-x: hidden;
+      }
+      .nabnak .home .col-1 {
+      
+      }
+      .nabnak .home .projects-container {
+        
       }
       .nabnak .home .project-container {
         
@@ -486,13 +606,13 @@ _.module.nabnak = {
     },
     // changed how 'stories' work last minute. I like task groups better; also makes it fit in more places instead of
     // 'stories'
+    // 261006: this thing is definitely missing properties but I dont know what yet
     group: {
       id: null,
       date_created: null,
       date_updated: null,
       name: null,
       description: null,
-      acceptanceCriteria: null,
       tasks: [],
       tags: [],
       comments: [],
@@ -526,19 +646,48 @@ _.module.nabnak = {
         tags: { type: 'tags' }, // text field with comma separated unique strings, spaces are squashed
       },
     },
+    group: {
+      fields: {
+        name: { type: 'text', required: true },
+        description: { type: 'text' },
+        tags: { type: 'tags' },
+      }
+    },
     task: {
+      // ah yeah here we go. we call setup before passing the form to the form control. setup builds any dynamic fields
+      // that have requirements like the module being built to build itself(need to work on wording man)
+      setup: (fields) => {
+        // our own fields are passed here
+        const mod = _.module.nabnak
+        if (!mod.data.selectedProject) {
+          // hmmmm we really want the entire process to blow up if we fail here
+          _.logger.log(`nabnak.fn.onsubmit.groupCreate: no selected project`,_.logger.level.error);return
+        }
+        if (!mod.data.selectedProject.groups.length) {
+          fields.group.type = 'hidden'
+        } else {
+          fields.group.options = mod.data.selectedProject.groups.map(x => ({id:x.id,name:x.name}))
+        }
+        fields.status.options = Object.keys(mod.schema.enum.status)
+        fields.priority.options = Object.keys(mod.schema.enum.priority)
+      },
       // think we need a 'date when this needs to be completed' field. yeah I actually really like that, we could put
       // on the home page all the tasks that are due soon(and late). ah yeah 'date_due'
       fields: {
         // removed for now but I do like the idea of being able to create a task without an active project
         //projectId: { type: 'hidden' }, // we technically dont need this field in schema since tasks always live in project
+        group: { type: 'select', options: [] },
         name: { type: 'text', required: true },
         description: { type: 'text' },
         tags: { type: 'tags' },
+        // not using displayName yet, I simply dont care atm
         acceptanceCriteria: { type: 'textarea', displayName: 'Acceptance Criteria' },
         // had to set these options manually due to circular reference(or not yet initialized) error
-        status: { type: 'select', required: true, options: ['todo','inprogress','done'] },
-        priority: { type: 'select', options: ['low','medium','high'] }
+        //status: { type: 'select', required: true, options: ['todo','inprogress','done'] },
+        //priority: { type: 'select', options: ['low','medium','high'] }
+        // 261006: finally making these dynamic!
+        status: { type: 'select', required: true, options: [] },
+        priority: { type: 'select', options: [] }
       }
     }
   },
@@ -549,6 +698,7 @@ _.module.nabnak = {
     parentSelector: null,
     // gets blown away on page refreshes. will need to persist at some point
     selectedProject: null,
+    selectedGroup: null,
     selectedTask: null,
     projects: []
   },
