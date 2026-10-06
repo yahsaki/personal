@@ -22,6 +22,7 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- bug: form values arent clearing even though they are created dynamically every time
 - clear previous form if triggering new form while another is active
 - implement command to stop text scrollers(release data for the most part). now I dont want to leave my site on
 - add .index(nullable int) to all everything

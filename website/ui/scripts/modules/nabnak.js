@@ -94,9 +94,9 @@ _.module.nabnak = {
         const parentEl = document.querySelector(mod.data.parentSelector)
         
         const projectsEl = mod.fn.buildHtml.projects()
-        const groupsEl = mod.fn.buildHtml.groups(mod.data.selectedProject)
+        const groupsEl = mod.fn.buildHtml.groups()
         const rightViewHeaderEl = mod.fn.buildHtml.rightViewHeader()
-        const projectEl = mod.fn.buildHtml.project(mod.data.selectedProject)
+        const projectEl = mod.fn.buildHtml.project()
 
         _.fn.clear(_.module.nabnak.data.parentSelector)
 
@@ -153,10 +153,11 @@ _.module.nabnak = {
           return string
         }
       },
-      groups: (project) => {
-        const data = _.module.nabnak.data
+      groups: () => {
+        const mod = _.module.nabnak
         const html = document.createElement('div')
         html.setAttribute('class', 'groups-container')
+        const project = mod.data.selectedProject
         if (!project) {
           html.innerHTML = `
           <b>groups</b>
@@ -175,7 +176,7 @@ _.module.nabnak = {
           for (let i in project.groups) {
             const group = project.groups[i]
             let className = 'not-selected'
-            if (group.id === data.selectedGroup?.id) {
+            if (group.id === mod.data.selectedGroup?.id) {
               className = 'selected'
             }
             string += `
@@ -209,36 +210,50 @@ _.module.nabnak = {
         `
         return html
       },
-      project: (project) => {
+      project: () => {
         // thinking about it, a different fn should interface with elements returning an index. only private fns
         // should call this fn which should always have the projectId. lets see how this goes
         const mod = _.module.nabnak
         const html = document.createElement('div')
         html.setAttribute('class', 'project-container')
+        const project = mod.data.selectedProject
         if (!project) {
           const h1 = document.createElement('h1')
           h1.innerText = `NO PROJECT SELECTED`
           html.append(h1)
           return html  
         }
-        // trying some weird formatting where the family tree stays at the top. not liking it so far. rather just
-        // create string html with fns embedded throughout
-        // I give up on this unreadable crap
-        /*const taskHeaderContainerEl = document.createElement('div');html.append(taskHeaderContainerEl)
-        const titleEl = document.createElement('h1');taskHeaderContainerEl.append(titleEl)
-        const tasksContainerEl = document.createElement('div');html.append(tasksContainerEl)
-        const todoColEl = document.createElement('div');taskHeaderContainerEl.append(todoColEl)
-        const todoColTitle = document.createElement('div');todoColEl.append(todoColTitle)
-        const inprogressColEl = document.createElement('div');taskHeaderContainerEl.append(inprogressColEl)
-        const doneColEl = document.createElement('div');taskHeaderContainerEl.append(doneColEl)
-        taskHeaderContainerEl.setAttribute('class', 'project-title-container')
-        titleEl.setAttribute('class', 'project-title')
-        titleEl.innerText = `Project: ${project.name}`
-        tasksContainerEl.setAttribute('class', 'tasks-container')*/
+        let tasks = []
+        if (mod.data.selectedGroup) {
+          for (let i in mod.data.selectedGroup.tasks) {
+            const group = mod.data.selectedGroup
+            tasks.push({
+              ...mod.data.selectedGroup.tasks[i],
+              group: {name:group.name,id:group.id}
+            })
+          }
+        } else {
+          // aggregate all tasks
+          for (let i in mod.data.selectedProject.tasks) {
+            tasks.push({
+              ...mod.data.selectedProject.tasks[i],
+              group: null,
+            })
+          }
+          for (let i in mod.data.selectedProject.groups) {
+            const group = mod.data.selectedProject.groups[i]
+            for (let j in group.tasks) {
+              tasks.push({
+                ...group.tasks[j],
+                group: {name:group.name,id:group.id}
+              })
+            }
+          }
+        }
 
-        const todoTasks = project.tasks.filter(x => x.status === mod.schema.enum.status.todo)
-        const inprogressTasks = project.tasks.filter(x => x.status === mod.schema.enum.status.inprogress)
-        const doneTasks = project.tasks.filter(x => x.status === mod.schema.enum.status.done)
+        const todoTasks = tasks.filter(x => x.status === mod.schema.enum.status.todo)
+        const inprogressTasks = tasks.filter(x => x.status === mod.schema.enum.status.inprogress)
+        const doneTasks = tasks.filter(x => x.status === mod.schema.enum.status.done)
 
         let string = `
         <div class="tasks-container">
@@ -266,12 +281,15 @@ _.module.nabnak = {
         html.innerHTML = string
         return html
 
-        function renderTasks(tasks) {
+        // changed this arg name from 'tasks' to 'taskArgs', hate them being the same name as a locally scoped var
+        // even if it works as intended
+        function renderTasks(taskArgs) {
           let string = ''
-          for (let i in tasks) {
-            const task = tasks[i]
+          for (let i in taskArgs) {
+            const task = taskArgs[i]
             string += `
             <div class="task">
+              <button data-id="${task.id}" onclick="_.module.nabnak.fn.task.onClick(this)">view</button>
               <p>created: ${task.date_created}</p>
               <p>tags: ${task.tags.join(',')}</p>
               <p>name: ${task.name}</p>
@@ -449,17 +467,35 @@ _.module.nabnak = {
         _.logger.log(`nabnak.fn.task.onStatusChange: status changed!`,_.logger.level.debug,e)
         const dom = _.module.nabnak
         const id = e.getAttribute('data-id')
-        const task = dom.data.selectedProject.tasks.find(x => x.id === id)
-        const previousStatus = task.status
+        const task = dom.fn.task.find(id)
         if (!task) {
           _.logger.log(`nabnak.fn.task.onStatusChange: failed to find task via id '${id}'`,_.logger.level.warn,e);return
         }
+        const previousStatus = task.status
         task.status = e.value
         _.logger.log(`task '${task.name}' status changed from '${previousStatus}' to '${task.status}'. TODO: handle logic once a task is marked completed, etc`)
         // set this as the active task so rerender shows it properly
-        dom.data.selectedTask = task
+        // 261006: disabling this for now(let the spaghetti rain)
+        //dom.data.selectedTask = task
         // you know, we could just do render() and switch up the view according to 'state' like we're doing now
+        dom.fn.save()
         dom.fn.render.home()
+      },
+      find: (id) => {
+        // now that we have tasks all over the place we need this fn
+        let mod = _.module.nabnak
+        if (!mod.data.selectedProject) {
+          _.logger.log(`nabnak.fn.task.find: no selected project`,_.logger.level.warn);return
+        }
+        let task
+        task = mod.data.selectedProject.tasks.find(x => x.id === id)
+        if (task) return task
+        for (let i in mod.data.selectedProject.groups) {
+          const group = mod.data.selectedProject.groups[i]
+          task = group.tasks.find(x => x.id === id)
+          if (task) return task
+        }
+        return task
       }
     },
     // the idea here is that these are callbacks called from outside this module
@@ -523,8 +559,18 @@ _.module.nabnak = {
         task.date_created = date.toISOString()
         task.date_updated = date.toISOString()
 
-        mod.data.selectedProject.tasks.push(task)
-        _.logger.log(`nabnak.onSubmit.taskCreate: task '${task.name}' created`)
+        // I dont really like a fn like this having to decide where the task should go. I would rather it be dumber and
+        // just dump the task where its told
+        if (mod.data.selectedGroup) {
+          mod.data.selectedGroup.tasks.push(task)
+          _.logger.log(`nabnak.onSubmit.taskCreate: task '${task.name}' created and added to group '${mod.data.selectedGroup.name}'`)
+        } else if (mod.data.selectedProject) {
+          mod.data.selectedProject.tasks.push(task)
+          _.logger.log(`nabnak.onSubmit.taskCreate: task '${task.name}' created and added to project '${mod.data.selectedProject.name}'`)
+        } else {
+          _.logger.log(`nabnak.onSubmit.taskCreate: project or group must be selected`,_.logger.level.warn);return
+        }
+        
         mod.fn.save()
         mod.fn.render.home()
       }
@@ -599,15 +645,19 @@ _.module.nabnak = {
       .nabnak .home .tasks-container {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
+        height: inherit;
       }
       .nabnak .home .project-container .todo-col {
         border: 1px solid black;
+        overflow-y: auto;
       }
       .nabnak .home .project-container .inprogress-col {
         border: 1px solid black;
+        overflow-y: auto;
       }
       .nabnak .home .project-container .done-col {
         border: 1px solid black;
+        overflow-y: auto;
       }
       .nabnak .home .task {
         border: 1px solid white;
@@ -714,11 +764,15 @@ _.module.nabnak = {
           // hmmmm we really want the entire process to blow up if we fail here
           _.logger.log(`nabnak.fn.onsubmit.groupCreate: no selected project`,_.logger.level.error);return
         }
-        if (!mod.data.selectedProject.groups.length) {
+        /*if (!mod.data.selectedProject.groups.length) {
           fields.group.type = 'hidden'
         } else {
-          fields.group.options = mod.data.selectedProject.groups.map(x => ({id:x.id,name:x.name}))
-        }
+          fields.group.options = mod.data.selectedProject.groups.map(x => ({
+            id:x.id,
+            name:x.name,
+            selected: x.id === mod.data.selectedGroup?.id,
+          }))
+        }*/
         fields.status.options = Object.keys(mod.schema.enum.status)
         fields.priority.options = Object.keys(mod.schema.enum.priority)
       },
@@ -727,7 +781,8 @@ _.module.nabnak = {
       fields: {
         // removed for now but I do like the idea of being able to create a task without an active project
         //projectId: { type: 'hidden' }, // we technically dont need this field in schema since tasks always live in project
-        group: { type: 'select', options: [] },
+        // 261006: disabling group for now. its slightly conflicting with how we associate everything to the selected thing
+        //group: { type: 'select', options: [] },
         name: { type: 'text', required: true },
         description: { type: 'text' },
         tags: { type: 'tags' },
