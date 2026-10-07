@@ -99,6 +99,12 @@ _.module.terminal = {
   fn: {
     // pondering placing this in root of tool
     command: {
+      export: (args) => {
+        _.module.terminal.exporter.export(args)
+      },
+      import: (args) => {
+        _.module.terminal.exporter.import(args)
+      },
       clear: (args) => {
         _.fn.clear(_.module.terminal.data.outputSelector)
       },
@@ -239,6 +245,103 @@ _.module.terminal = {
     logs: [],
     // TODO: save command history. why TF didnt I do this originally
     commandHistory: [],
+  },
+  // 261006: was torn between implementing the import/export data tool in nabnak then base.js but wound up
+  // just implementing it here due to the need of the upload file field. well lets try not to use the field
+  // and use a dialog instead for now and see what happens
+  exporter: {
+    export: (args) => {
+      _.logger.log(`terminal.fn.exporter.export: called`,_.logger.level.debug,args)
+      const content = {}
+      for (let module in _.module) {
+        
+        const mod = _.module[module]
+        if (mod.data?.storageKey) {
+          // going to be redesigning how data is stored real soon. only nabnak uses 'storageKey' atm
+          const data = _.storage.get(mod.data.storageKey)
+          if (data) {
+            content[module] = data
+          }
+        }
+      }
+
+      if (!Object.keys(content).length) {
+        _.logger.log(`terminal.exporter.export: no data to export`);return
+      }
+      
+      const blob = new Blob([JSON.stringify(content,' ',2)], { type: 'application/json'})
+      const blobUrl = URL.createObjectURL(blob)
+
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = `yahsaki-data_${new Date().toISOString()}.json`
+
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      URL.revokeObjectURL(blobUrl)
+      _.logger.log(`terminal.exporter.export: data exported`)
+    },
+    import: (args) => {
+      _.logger.log(`terminal.fn.exporter.import: called`,_.logger.level.debug,args)
+
+      const input = document.createElement('input')
+      input.setAttribute('type', 'file')
+      input.setAttribute('accept', '.json')
+      input.style.display = 'none'
+      document.body.appendChild(input)
+
+      input.click()
+
+      input.addEventListener('change', async e => {
+        console.log('file added', e)
+        if (!e.target?.files?.length) {
+          _.logger.log(`terminal.exporter.import: no file selected`)
+          document.body.removeChild(input)
+          return
+        }
+        const file = e.target.files[0]
+        const text = await file.text()
+        const data = JSON.parse(text)
+        let modulesUpdated = []
+        for (let name in data) {
+          // I dont really have a way to validate this thing, gg
+          if (!_.module[name]) { continue }
+          const mod = _.module[name]
+          if (!mod.data?.storageKey) { continue }
+          // currently specific to nabnak, needs renaming
+          if (!mod.fn.get) {
+            _.logger.log(`terminal.exporter.import: module '${name}' didnt have a fn.get(will change soon)`,_.logger.level.debug)
+            continue
+          }
+          // alright save data to storage then call the module's fetch data fn
+          _.storage.save(mod.data.storageKey, JSON.stringify(data[name]))
+          mod.fn.get()
+          modulesUpdated.push(name)
+        }
+
+        if (modulesUpdated.length) {
+          _.logger.log(`terminal.exporter.import: modules updated: ${modulesUpdated.join(',')}`)
+        } else {
+          _.logger.log(`terminal.exporter.import: no modules updated`)
+        }
+
+        document.body.removeChild(input)
+        // browser is just going to have to deal with the event listener
+        _.fn.render()
+        return
+      })
+      /*_.form.load({
+        title: 'import',
+        form: {
+          fields: {
+            import: { type: 'import-data' }
+          }
+        }
+      })*/
+
+    }
   },
   // all logs should pipe here
   logger: {
@@ -398,11 +501,14 @@ _.module.terminal = {
             } else {
               _.fn.createElement('option',[],field.options[i],select)
             }
-            
           }
         }
         if (field.type === 'hidden') {
           _.logger.log(`encountered hidden field '${prop}' which we do nothing special with yet at the moment`,_.logger.level.debug,field)
+        }
+        if (field.type === 'import-data') {
+          // not the same as 'file'
+
         }
         _.fn.createElement('br',[],null,formEl)
       }
@@ -418,15 +524,15 @@ _.module.terminal = {
         // need to work on my relative argument referencing. i think migrating to classes will fix this
         args.form.setup(args.form.fields)
       } else {
-        _.logger.log(`form '${args.title}' does not have a setup function`)
+        _.logger.log(`form '${args.title}' does not have a setup function`,_.logger.level.debug)
       }
       // rush job, could definitely lose something this way
       _.form.current = {
         title: args.title,
         // I only have a .fields prop in form so far, please note this truncation if this changes
         fields: args.form.fields,
-        callback: args.callback,
-        //callbackName: args.callbackName,
+        onSuccess: args.onSuccess,
+        onCancel: args.onCancel,
       }
       _.form.render()
     },
@@ -461,7 +567,7 @@ _.module.terminal = {
         // rehydrate logs
         _.logger.rehydrate()
         // submit results to caller
-        _.form.current.callback(_.form.current.fields)
+        _.form.current.onSuccess(_.form.current.fields)
         // this should be green but whatever
         _.logger.log(`form successfully submitted ＼（＾０＾）ノ,`)
         // purge current
@@ -472,7 +578,13 @@ _.module.terminal = {
       }
     },
     onCancel: () => {
-      _.logger.log(`form.onCancel: called`,_.logger.level.debug)
+      _.logger.log(`form.onCancel: called`,_.logger.level.debug,_.form.current)
+      // clear terminal
+      _.fn.clear(_.module.terminal.data.outputSelector)
+      // rehydrate logs
+      _.logger.rehydrate()
+      _.form.current.onCancel()
+      _.form.current = null
     },
     // TODO: instead of referencing field types statically, we need to reference them from here, IE
     // text, textarea, tags, hidden, select, etc

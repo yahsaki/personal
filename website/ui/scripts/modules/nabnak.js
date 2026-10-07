@@ -21,6 +21,10 @@ _.module.nabnak = {
     _.module.nabnak.fn.get()
     _.module.nabnak.fn.setCss()
     _.module.nabnak.fn.render.home()
+
+    // fn.render needs to be remapped to whatever the current view is
+    _.fn.render = _.module.nabnak.fn.render.home
+
     _.logger.log('nabnak.load: load complete') 
   },
   unload: () => {
@@ -29,6 +33,8 @@ _.module.nabnak = {
   },
   fn: {
     save: () => {
+      const mod = _.module.nabnak
+      if (!mod.data.projects) { _.logger.log(`projects null`,_.logger.level.debug);return }
       const string = JSON.stringify(_.module.nabnak.data.projects)
       _.storage.save(_.module.nabnak.data.storageKey, string)
       _.logger.log('nabnak.fn.save: projects saved')
@@ -128,8 +134,12 @@ _.module.nabnak = {
         const data = _.module.nabnak.data
         const html = document.createElement('div')
         html.setAttribute('class', 'projects-container')
+        if (!data.projects) {
+          html.innerHTML = `<b>Projects: 0</b>`
+          return html  
+        }
         html.innerHTML = `
-        <b>Projects: ${data.projects.length}</b>
+        <b>Projects: ${data.projects?.length}</b>
         <ul>
         ${renderProjectList()}
         </ul>
@@ -312,13 +322,20 @@ _.module.nabnak = {
       help: () => {},
       // delete project data from browser storage
       wipe: () => {
-        _.storage.save(_.module.nabnak.data.storageKey, null)
+        const mod = _.module.nabnak
+        _.storage.save(mod.data.storageKey, null)
         _.logger.log('cleared nabnak storage')
+        mod.data.projects = null
+        mod.data.selectedProject = null
+        mod.data.selectedGroup = null
+        mod.data.selectedTask = null
+        mod.fn.render.home()
       },
       select: {
         project: (index) => {
           const mod = _.module.nabnak
           _.logger.log('select project called!',_.logger.level.debug, index)
+          if (!mod.data.projects) { _.logger.log(`projects null`,_.logger.level.debug);return }
           const project = mod.data.projects[index]
           if (!project) {
             _.logger.log(`no project found at index ${index}`,_.logger.level.warn);return
@@ -353,20 +370,22 @@ _.module.nabnak = {
       },
       create: {
         project: () => {
+          const mod = _.module.nabnak
           _.logger.log('create project called!',_.logger.level.debug)
           // pondered renaming .render to something like .load. I dont like other modules 'forcing' another module to
           // act: it seems better to pass the information that the module needs and let it act accordingly
           // changed it to .load, there
           _.form.load({
             title: 'Create Project',
-            form: _.module.nabnak.form.project,
+            form: mod.form.project,
             // not settled on passing callback or assuming fn from string. callback should be fine so ill move forward
             // with that while keeping the name of the callback as an arg too. the reason im hesitant on string name
             // is that that would rely on the terminal's current module being this module. if that switched, we would
             // lose the reference. I prefer string name because it lets me build cross module operations without
             // directly calling them, but callback fn gives me that just as well. I found no reason not to use callback
             // yet
-            callback: _.module.nabnak.fn.onSubmit.projectCreate,
+            onSuccess: mod.fn.form.onSubmit.projectCreate,
+            onCancel: mod.fn.form.onCancel,
             //callbackName: 'projectCreate'
           })
         },
@@ -378,7 +397,8 @@ _.module.nabnak = {
           _.form.load(({
             title: 'Create Group',
             form: mod.form.group,
-            callback: mod.fn.onSubmit.groupCreate,
+            onSuccess: mod.fn.form.onSubmit.groupCreate,
+            onCancel: mod.fn.form.onCancel,
           }))
         },
         task: () => {
@@ -390,7 +410,8 @@ _.module.nabnak = {
           _.form.load({
             title: 'Create Task',
             form: mod.form.task,
-            callback: mod.fn.onSubmit.taskCreate,
+            onSuccess: mod.fn.form.onSubmit.taskCreate,
+            onCancel: mod.fn.form.onCancel,
           })
         }
       }
@@ -450,7 +471,7 @@ _.module.nabnak = {
       the structure of these props are HORRIBLE
       - fn.buildHtml.projects
       - fn.task.onStatusChange
-      - fn.onSubmit.projectCreate
+      - fn.form.onSubmit.projectCreate
       - fn.setCss
       - fn.command...
       - schema.enum
@@ -499,81 +520,86 @@ _.module.nabnak = {
       }
     },
     // the idea here is that these are callbacks called from outside this module
-    onSubmit: {
-      projectCreate: (args) => {
-        _.logger.log('nabnak.fn.onSubmit.projectCreate: project submitted!',_.logger.level.debug, args)
-        const project = {..._.module.nabnak.schema.project}
-        const date = new Date()
-        project.id = crypto.randomUUID()
-        project.name = args.name.value
-        project.description = args.description.value
-        if (args.tags.value.length) {
-          // _.form handles cleaning up tags
-          project.tags = args.tags.value.split(',')
-        }
-        project.date_created = date.toISOString()
-        project.date_updated = date.toISOString()
+    form: {
+      onCancel: () => {
 
-        _.module.nabnak.data.projects.push(project)
-        _.logger.log(`nabnak.onSubmit.projectCreate: project '${project.name}' created`)
-        _.module.nabnak.fn.save()
-        // eehhhh not sure if a rerender is triggered after this but im putting this here anyway
-        _.module.nabnak.fn.render.home()
       },
-      groupCreate: (args) => {
-        _.logger.log('nabnak.fn.onSubmit.groupCreate: group submitted!',_.logger.level.debug, args)
-        const mod = _.module.nabnak
-        if (!mod.data.selectedProject) {
-          _.logger.log(`nabnak.fn.onsubmit.groupCreate: no selected project`,_.logger.level.warn);return
-        }
-        const group = {...mod.schema.group}
-        const date = new Date()
-        group.id = crypto.randomUUID()
-        group.name = args.name.value
-        group.description = args.description.value
-        if (args.tags.value.length) {
-          // _.form handles cleaning up tags
-          project.tags = args.tags.value.split(',')
-        }
-        group.date_created = date.toISOString()
-        group.date_updated = date.toISOString()
-        mod.data.selectedProject.groups.push(group)
-        _.logger.log(`nabnak.fn.onSubmit.groupCreate: group '${group.name}' created`,_.logger.level.info,group)
-        mod.fn.save()
-        mod.fn.render.home()
-      },
-      taskCreate: (args) => {
-        _.logger.log('nabnak.fn.onSubmit.projectCreate: task submitted!',_.logger.level.debug, args)
-        const mod = _.module.nabnak
-        const task = {...mod.schema.task}
-        const date = new Date()
-        task.id = crypto.randomUUID() // we technically dont need these yet which is crazy
-        task.name = args.name.value
-        task.description = args.description.value
-        task.acceptanceCriteria = args.acceptanceCriteria.value
-        task.status = args.status.value
-        task.priority = args.priority.value
-        if (args.tags.value.length) {
-          task.tags = args.tags.value.split(',')
-        }
-        task.date_created = date.toISOString()
-        task.date_updated = date.toISOString()
+      onSubmit: {
+        projectCreate: (args) => {
+          _.logger.log('nabnak.fn.form.onSubmit.projectCreate: project submitted!',_.logger.level.debug, args)
+          const project = {..._.module.nabnak.schema.project}
+          const date = new Date()
+          project.id = crypto.randomUUID()
+          project.name = args.name.value
+          project.description = args.description.value
+          if (args.tags.value.length) {
+            // _.form handles cleaning up tags
+            project.tags = args.tags.value.split(',')
+          }
+          project.date_created = date.toISOString()
+          project.date_updated = date.toISOString()
+          if (!_.module.nabnak.data.projects) { _.module.nabnak.data.projects = [] }
+          _.module.nabnak.data.projects.push(project)
+          _.logger.log(`nabnak.onSubmit.projectCreate: project '${project.name}' created`)
+          _.module.nabnak.fn.save()
+          // eehhhh not sure if a rerender is triggered after this but im putting this here anyway
+          _.module.nabnak.fn.render.home()
+        },
+        groupCreate: (args) => {
+          _.logger.log('nabnak.fn.form.onSubmit.groupCreate: group submitted!',_.logger.level.debug, args)
+          const mod = _.module.nabnak
+          if (!mod.data.selectedProject) {
+            _.logger.log(`nabnak.fn.form.onSubmit.groupCreate: no selected project`,_.logger.level.warn);return
+          }
+          const group = {...mod.schema.group}
+          const date = new Date()
+          group.id = crypto.randomUUID()
+          group.name = args.name.value
+          group.description = args.description.value
+          if (args.tags.value.length) {
+            // _.form handles cleaning up tags
+            project.tags = args.tags.value.split(',')
+          }
+          group.date_created = date.toISOString()
+          group.date_updated = date.toISOString()
+          mod.data.selectedProject.groups.push(group)
+          _.logger.log(`nabnak.fn.form.onSubmit.groupCreate: group '${group.name}' created`,_.logger.level.info,group)
+          mod.fn.save()
+          mod.fn.render.home()
+        },
+        taskCreate: (args) => {
+          _.logger.log('nabnak.fn.form.onSubmit.projectCreate: task submitted!',_.logger.level.debug, args)
+          const mod = _.module.nabnak
+          const task = {...mod.schema.task}
+          const date = new Date()
+          task.id = crypto.randomUUID() // we technically dont need these yet which is crazy
+          task.name = args.name.value
+          task.description = args.description.value
+          task.acceptanceCriteria = args.acceptanceCriteria.value
+          task.status = args.status.value
+          task.priority = args.priority.value
+          if (args.tags.value.length) {
+            task.tags = args.tags.value.split(',')
+          }
+          task.date_created = date.toISOString()
+          task.date_updated = date.toISOString()
 
-        // I dont really like a fn like this having to decide where the task should go. I would rather it be dumber and
-        // just dump the task where its told
-        if (mod.data.selectedGroup) {
-          mod.data.selectedGroup.tasks.push(task)
-          _.logger.log(`nabnak.onSubmit.taskCreate: task '${task.name}' created and added to group '${mod.data.selectedGroup.name}'`)
-        } else if (mod.data.selectedProject) {
-          mod.data.selectedProject.tasks.push(task)
-          _.logger.log(`nabnak.onSubmit.taskCreate: task '${task.name}' created and added to project '${mod.data.selectedProject.name}'`)
-        } else {
-          _.logger.log(`nabnak.onSubmit.taskCreate: project or group must be selected`,_.logger.level.warn);return
+          // I dont really like a fn like this having to decide where the task should go. I would rather it be dumber and
+          // just dump the task where its told
+          if (mod.data.selectedGroup) {
+            mod.data.selectedGroup.tasks.push(task)
+            _.logger.log(`nabnak.onSubmit.taskCreate: task '${task.name}' created and added to group '${mod.data.selectedGroup.name}'`)
+          } else if (mod.data.selectedProject) {
+            mod.data.selectedProject.tasks.push(task)
+            _.logger.log(`nabnak.onSubmit.taskCreate: task '${task.name}' created and added to project '${mod.data.selectedProject.name}'`)
+          } else {
+            _.logger.log(`nabnak.onSubmit.taskCreate: project or group must be selected`,_.logger.level.warn);return
+          }
+          
+          mod.fn.save()
+          mod.fn.render.home()
         }
-        
-        mod.fn.save()
-        mod.fn.render.home()
-      }
+      },
     },
     setCss: () => {
       // dont want this crowding .load. need to move them in all plugins
@@ -762,7 +788,7 @@ _.module.nabnak = {
         const mod = _.module.nabnak
         if (!mod.data.selectedProject) {
           // hmmmm we really want the entire process to blow up if we fail here
-          _.logger.log(`nabnak.fn.onsubmit.groupCreate: no selected project`,_.logger.level.error);return
+          _.logger.log(`nabnak.fn.form.onSubmit.groupCreate: no selected project`,_.logger.level.error);return
         }
         /*if (!mod.data.selectedProject.groups.length) {
           fields.group.type = 'hidden'

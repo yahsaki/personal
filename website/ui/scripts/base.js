@@ -16,12 +16,16 @@ _.fn.clear = (selector) => {
   el.replaceChildren()
   _.logger.log(`fn.clear: element via selector '${selector}' cleared`,_.logger.level.debug)
 }
-_.fn.load = (viewName) => {
+_.fn.render = () => {
+  _.logger.log(`fn.render: render function should be remapped to the current view`)
+}
+// this is big time dead
+/*_.fn.load = (viewName) => {
   console.log(`_.fn.load: attempting to load view '${viewName}'`)
   if (!_.view[viewName]) {
     console.error(`_.fn.load: failed to find view '${viewName}'`);return
   }
-}
+}*/
 _.fn.updateTitle = (text) => {
   if (typeof text !== 'string' || !text.length) {
     _.logger.log(`attepting to set site title to some garbage value`,_.logger.level.error,text)
