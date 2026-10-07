@@ -460,7 +460,9 @@ _.module.terminal = {
         if ((field.type === 'text' || field.type === 'tags' || field.type === 'textarea') && !field.value) {
           field.value = ''
         }
-        _.fn.createElement('span',[],`${prop}: `,formEl)
+        if (field.type !== 'hidden') {
+          _.fn.createElement('span',[],`${prop}: `,formEl)
+        }
         // I want some way to auto update the _.current form on change. lets do that
         if (field.type === 'text' || field.type === 'tags') {
           const input = _.fn.createElement('input',[
@@ -484,7 +486,8 @@ _.module.terminal = {
         }
         if (field.type === 'select') {
           // re-enabled the required=true set default logic. having everything default to priority=low kinda sucks
-          if (field.required) { field.value = field.options[0] }
+          // re-re-disabled this again, jeez. kept blowing away my already set status that wasnt default
+          //if (field.required) { field.value = field.options[0] }
           //field.value = field.options[0] // screw it, always set a default
           const select = _.fn.createElement('select',[
             {name:'class',val:`form-${prop}`},
@@ -496,21 +499,27 @@ _.module.terminal = {
           ],null,formEl)
           for (let i in field.options) { 
             const option  = field.options[i]
+            const attributes = []
             if (typeof option === 'object') {
-              _.fn.createElement('option',[{name:'value',val:option.id}],option.name,select)
+              if (field.value === option.id) {
+                attributes.push({name:'selected',value:'true'})
+              }
+              attributes.push({name:'value',val:option.id})
+              _.fn.createElement('option',attributes,option.name,select)
             } else {
-              _.fn.createElement('option',[],field.options[i],select)
+              if (option === field.value) {
+                attributes.push({name:'selected',value:'true'})
+              }
+              _.fn.createElement('option',attributes,field.options[i],select)
             }
           }
         }
         if (field.type === 'hidden') {
           _.logger.log(`encountered hidden field '${prop}' which we do nothing special with yet at the moment`,_.logger.level.debug,field)
+        } else {
+          _.fn.createElement('br',[],null,formEl)
         }
-        if (field.type === 'import-data') {
-          // not the same as 'file'
-
-        }
-        _.fn.createElement('br',[],null,formEl)
+        
       }
       _.fn.createElement('br',[],null,formEl)
       _.fn.createElement('button',[{name:'onclick',val:'_.form.onCancel()'}],'cancel',formEl)
@@ -526,11 +535,9 @@ _.module.terminal = {
       } else {
         _.logger.log(`form '${args.title}' does not have a setup function`,_.logger.level.debug)
       }
-      // rush job, could definitely lose something this way
       _.form.current = {
         title: args.title,
-        // I only have a .fields prop in form so far, please note this truncation if this changes
-        fields: args.form.fields,
+        fields: structuredClone(args.form.fields),//{...args.form.fields},
         onSuccess: args.onSuccess,
         onCancel: args.onCancel,
       }

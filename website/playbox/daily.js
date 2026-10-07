@@ -13,8 +13,8 @@ const klaw = require('klaw')
 ;(async () => {
   await runMeDaily()
   await util.delay(1000)
-  buildDataFiles()
-})//()
+  await buildDataFiles()
+})()
 
 async function runMeDaily() {
   //await scraper.cisaCyberSecurity()

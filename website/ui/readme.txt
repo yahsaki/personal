@@ -22,6 +22,12 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- select task buggy as hell. not knowing whether its in the proj array or group arr is causing disarray in onTaskUpdateClick
+  if you dont have the group selected properly. we render ALL tasks in the project view, so if you click on a task that belongs
+  to a group but dont have that group selected the attempted update fails. tried to fix but I made it so much worse, need
+  to fix it properly
+- implement a way to slowly fetch data(ex for text scroller) over time instead of hundreds of megs at once. easier on data
+  once remote. make it configurable
 - bug: form values arent clearing even though they are created dynamically every time
 - clear previous form if triggering new form while another is active
 - implement command to stop text scrollers(release data for the most part). now I dont want to leave my site on
@@ -111,6 +117,9 @@ completed:
 - design how base, views and tools interact with each other
 
 notes:
+- 261006: nabnak is quickly approaching one thousands LoC. as it grows, it could be a good idea to split it into multiple plugins
+  which defeats the purpose technically since none of them can operate separately but the code will look cleaner.
+  giving it more time until it reaches that point
 - 261006: mmmmmmm ui/data/all.json is way too big: need to shuffle and rotate old data at the server level
 - 261005: stop using <pre>'s(especially in terminal), they are the devil
 - 261002: going to start setting 'this' refs in tools/views at the start of functions. makes code cleaner and easier to
