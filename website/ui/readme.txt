@@ -22,6 +22,10 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- I cant believe I dont know this. I want the text to stay on one line and invisibly overflow for sections like the text 
+  scroller title, nabnak's kanban default view task title, nabnak home project/group navigation title
+- R&D splitting the rendering logic into its own module. its not like there will be issues making it happen, more like
+  can we make it work within the ideology of the project
 - select task buggy as hell. not knowing whether its in the proj array or group arr is causing disarray in onTaskUpdateClick
   if you dont have the group selected properly. we render ALL tasks in the project view, so if you click on a task that belongs
   to a group but dont have that group selected the attempted update fails. tried to fix but I made it so much worse, need

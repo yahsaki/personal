@@ -20,10 +20,10 @@ _.module.nabnak = {
 
     _.module.nabnak.fn.get()
     _.module.nabnak.fn.setCss()
-    _.module.nabnak.fn.render.home()
+    _.module.nabnak.fn.render()
 
     // fn.render needs to be remapped to whatever the current view is
-    _.fn.render = _.module.nabnak.fn.render.home
+    _.fn.render = _.module.nabnak.fn.render
 
     _.logger.log('nabnak.load: load complete') 
   },
@@ -192,27 +192,21 @@ _.module.nabnak = {
     onTaskCreateClick: () => { _.module.nabnak.fn.createTask() },
     onTaskUpdateClick: (id) => {
       const mod = _.module.nabnak
-      if (!mod.data.selectedProject) { _.logger.log(`nabnak.fn.onTaskUpdateClick: no project selected`,_.logger.level.warn);return }
-      //if (!mod.data.selectedTask) { _.logger.log(`nabnak.fn.onTaskUpdateClick: no task selected`,_.logger.level.warn);return }
-      let task
-      if (mod.data.selectedGroup) {
-        task = mod.data.selectedGroup.tasks.find(x => x.id === id)
-        if (!task) { _.logger.log(`nabnak.fn.onTaskUpdateClick: failed to find task by id '${id}' in group '${mod.data.selectedGroup.name}'`,_.logger.level.warn);return }
-        _.module.nabnak.fn.updateTask({
-          project: mod.data.selectedProject,
-          task: task,
-          group: mod.data.selectedGroup,
-        })
-      } else {
-        task = mod.data.selectedProject.tasks.find(x => x.id === id)
-        if (!task) { _.logger.log(`nabnak.fn.onTaskUpdateClick: failed to find task by id '${id}' in project '${mod.data.selectedProject.name}'`,_.logger.level.warn);return }
-        _.module.nabnak.fn.updateTask({
-          project: mod.data.selectedProject,
-          task: task,
-          group: null,
-        })
-      }
-      
+      const args = mod.fn.task.find(id)
+      if (!args.task) { _.logger.log(`nabnak.fn.onTaskUpdateClick: failed to find task by task id '${id}'`,_.logger.level.warn);return }
+      if (!args.project) { _.logger.log(`nabnak.fn.onTaskUpdateClick: failed to find project by project id '${args.project.id}'`,_.logger.level.warn);return }
+
+      _.module.nabnak.fn.updateTask(args)
+    },
+    onTaskViewClick: (id) => {
+      const mod = _.module.nabnak
+      const taskFindRes = mod.fn.task.find(id)
+      if (!taskFindRes.task) { _.logger.log(`nabnak.fn.onTaskViewClick: failed to find task by task id '${id}'`,_.logger.level.warn);return }
+      // imagine selected project/group being different from selected task's project/group... how messy
+      mod.data.selectedTask = taskFindRes.task
+      mod.data.selectedGroup = taskFindRes.group
+      mod.data.selectedProject = taskFindRes.project
+      _.fn.render()
     },
     // clicking on items not actively selected
     onProjectClick: (id) => {
@@ -238,9 +232,11 @@ _.module.nabnak = {
         _.logger.log(`project '${project.name}' selected`)
       }
       
-      _.module.nabnak.fn.render.home()
+      _.module.nabnak.fn.render()
     },
     onGroupClick: (id) => {
+      // just realized this assumes the current project is always going to be the parent of this task which is probably
+      // not always going to be the case
       _.logger.log('group clicked',_.logger.level.debug, id)
       const mod = _.module.nabnak
       if (!mod.data.selectedProject) { _.logger.log(`no project selected`,_.logger.level.warn);return }
@@ -256,12 +252,18 @@ _.module.nabnak = {
         mod.data.selectedGroup = group
       }
       
-      mod.fn.render.home()
+      _.fn.render()
     },
     onTaskClick: (id) => {},
     // not sold on fn.render pattern yet
-    render: {
-      home: () => { // home = projects page for the most part
+    // 261008: its changing but not for the better for the most part. render will contain the logic that switches views
+    render: () => {
+      _.module.nabnak.fn.page.home()
+    },
+    // pages will be... the pages duh
+    page: {
+      home: () => { 
+        // home = projects page for the most part
         // 261004: want to start writing more agnostic code, starting with not directly referencing itself everywhere,
         // less things to change on renames and restructures are easier
         const mod = _.module.nabnak
@@ -294,7 +296,6 @@ _.module.nabnak = {
         wrapper.append(col1)
         col1.append(rightViewHeaderEl)
         col1.append(projectEl)
-        
       }
     },
     buildHtml: {
@@ -468,16 +469,17 @@ _.module.nabnak = {
             const task = taskArgs[i]
             string += `
             <div class="task">
-              <button data-id="${task.id}" onclick="_.module.nabnak.fn.onTaskUpdateClick('${task.id}')">edit</button>
-              <p>created: ${task.date_created}</p>
-              <p>tags: ${task.tags.join(',')}</p>
-              <p>name: ${task.name}</p>
-              <p>desc: ${task.description}</p>
+              <button onclick="_.module.nabnak.fn.onTaskUpdateClick('${task.id}')">edit</button>
+              <button onclick="_.module.nabnak.fn.onTaskViewClick('${task.id}')">view</button>
               <select class="debug" data-id="${task.id}" oninput="_.module.nabnak.fn.task.onStatusChange(this)">
                 <option${task.status === mod.schema.enum.status.todo ? ' selected' : ''}>${mod.schema.enum.status.todo}</option>
                 <option${task.status === mod.schema.enum.status.inprogress ? ' selected' : ''}>${mod.schema.enum.status.inprogress}</option>
                 <option${task.status === mod.schema.enum.status.done ? ' selected' : ''}>${mod.schema.enum.status.done}</option>
               </select>
+              <p>created: ${task.date_created}</p>
+              <p>tags: ${task.tags.join(',')}</p>
+              <p>name: ${task.name}</p>
+              <p>desc: ${task.description}</p>
             </div>
             
             `
@@ -500,10 +502,10 @@ _.module.nabnak = {
         mod.data.selectedProject = null
         mod.data.selectedGroup = null
         mod.data.selectedTask = null
-        mod.fn.render.home()
+        _.fn.render()
       },
       home: () => {
-        _.module.nabnak.fn.render.home()
+        _.module.nabnak.fn.render()
       },
       update: {
         project: (index) => {
@@ -555,7 +557,7 @@ _.module.nabnak = {
           }
           mod.data.selectedProject = project
           _.logger.log(`project '${project.name}' selected`)
-          mod.fn.render.home()
+          _.fn.render()
         },
         group: (index) => {
           const mod = _.module.nabnak
@@ -564,7 +566,7 @@ _.module.nabnak = {
           if (!group) { _.logger.log(`no group found at index ${index}`,_.logger.level.warn);return }
           mod.data.selectedGroup = group
           _.logger.log(`group '${group.name}' selected`)
-          mod.fn.render.home()
+          _.fn.render()
         },
         task: (index) => {
           const mod = _.module.nabnak
@@ -575,7 +577,7 @@ _.module.nabnak = {
           _.logger.log(`task '${task.name}' selected`)
           // we dont have any other views yet lol
           // TODO: change(or create) this view if needed
-          mod.fn.render.home()
+          _.fn.render()
         }
       },
       create: {
@@ -680,7 +682,8 @@ _.module.nabnak = {
         _.logger.log(`nabnak.fn.task.onStatusChange: status changed!`,_.logger.level.debug,e)
         const dom = _.module.nabnak
         const id = e.getAttribute('data-id')
-        const task = dom.fn.task.find(id)
+        const taskFindRes = dom.fn.task.find(id)
+        const task = taskFindRes.task
         if (!task) {
           _.logger.log(`nabnak.fn.task.onStatusChange: failed to find task via id '${id}'`,_.logger.level.warn,e);return
         }
@@ -692,24 +695,29 @@ _.module.nabnak = {
         //dom.data.selectedTask = task
         // you know, we could just do render() and switch up the view according to 'state' like we're doing now
         dom.fn.save()
-        dom.fn.render.home()
+        dom.fn.render()
       },
       find: (id) => {
         // now that we have tasks all over the place we need this fn
+        // please lets not have to build this for comments, just... figure something out
         let mod = _.module.nabnak
         let task
         for (let i in mod.data.projects) {
           const project = mod.data.projects[i]
           task = project.tasks.find(x => x.id === id)
-          if (task) return task
+          if (task) {
+            return {task,project}
+          }
           for (let j in project.groups) {
             const group = project.groups[j]
             task = group.tasks.find(x => x.id === id)
-            if (task) return task
+            if (task) {
+              return {task,project,group}
+            }
           }
         }
         
-        return task
+        return {task}
       }
     },
     // the idea here is that these are callbacks called from outside this module
@@ -736,7 +744,7 @@ _.module.nabnak = {
             _.logger.log(`nabnak.fn.form.onSubmit.project.create: project '${project.name}' created`)
             _.module.nabnak.fn.save()
             // eehhhh not sure if a rerender is triggered after this but im putting this here anyway
-            _.module.nabnak.fn.render.home()
+            _.module.nabnak.fn.render()
           },
           update: (args) => {
             // I never liked the idea of passing ALL fields back, too easy to lose something(done that too many times)
@@ -761,7 +769,7 @@ _.module.nabnak = {
             // TODO: some kind of changelog, even better is its in a format that can be used to generate forms later
             _.logger.log(`nabnak.fn.form.onSubmit.project.update: project '${project.name}' updated successfully`)
             mod.fn.save()
-            _.fn.render() // going to start using this instead of mod.fn.render.home()
+            _.fn.render() // going to start using this instead of _.fn.render()
           },
         },
         group: {
@@ -786,7 +794,7 @@ _.module.nabnak = {
             project.groups.push(group)
             _.logger.log(`nabnak.fn.form.onSubmit.group.create: group '${group.name}' created for project '${project.name}'`,_.logger.level.info,group)
             mod.fn.save()
-            mod.fn.render.home()
+            _.fn.render()
           },
           update: (args) => {
             _.logger.log('nabnak.fn.form.onSubmit.group.update: group submitted!',_.logger.level.debug, args)
@@ -850,7 +858,8 @@ _.module.nabnak = {
             const mod = _.module.nabnak
             // this aint gonna work since it depends on a project to be selected. I just fixed that in project/group, not
             // reimplementing bug here
-            const task = mod.fn.task.find(args.id.value)
+            const taskFindRes = mod.fn.task.find(args.id.value)
+            const task = taskFindRes.task
             if (!task) {
               _.logger.log(`nabnak.fn.form.onSubmit.task.update: failed to find task by id '${args.id.value}'`,_.logger.level.warn);return
             }
@@ -1104,6 +1113,11 @@ _.module.nabnak = {
     selectedProject: null,
     selectedGroup: null,
     selectedTask: null,
+    // man the rendering logic needs a LOT of love, very convoluted. looking forward to this redesign
+    // for the time being lets trigger current view via .page. right now its fully driven off of selected project
+    // and group(task not so much yet). we have several places calling _.fn.render and _.module.nabnak.fn.render
+    // so im going to change that to .render and have that fn render based off of .page value
+    page: null,
     projects: []
   },
 }
