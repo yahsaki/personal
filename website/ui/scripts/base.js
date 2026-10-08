@@ -1,3 +1,6 @@
+// ================================= 
+//      GLOBAL FN DECLARATIONS
+// =================================
 _.fn.clean = () => {
   const head = document.querySelector('head')
   while(head.firstChild) head.removeChild(head.firstChild)
@@ -19,13 +22,6 @@ _.fn.clear = (selector) => {
 _.fn.render = () => {
   _.logger.log(`fn.render: render function should be remapped to the current view`)
 }
-// this is big time dead
-/*_.fn.load = (viewName) => {
-  console.log(`_.fn.load: attempting to load view '${viewName}'`)
-  if (!_.view[viewName]) {
-    console.error(`_.fn.load: failed to find view '${viewName}'`);return
-  }
-}*/
 _.fn.updateTitle = (text) => {
   if (typeof text !== 'string' || !text.length) {
     _.logger.log(`attepting to set site title to some garbage value`,_.logger.level.error,text)
@@ -39,12 +35,17 @@ _.fn.updateTitle = (text) => {
     document.head.append(title)
   }
 }
+// replaced by terminal
+_.fn.focus = () => {}
+// ================================= 
+//   END GLOBAL FN DECLARATIONS
+// =================================
+// same as form, I dont want any module to directly call a different module so I have to put this here
 _.logger = {
   log: (text, level, blob) => { console.log(`default logger: ${text}`, level, blob) },
   rehydrate: () => {},
   level: { debug: 'debug', info: 'info', warn: 'warn', error: 'error' }
 }
-// same as logger above, I dont want any module to directly call a different module so I have to put this here
 _.form = {
   validate: () => { throw Error('unimplemented') },
   render: () => { throw Error('unimplemented') },
@@ -78,8 +79,6 @@ _.storage.save = (key, data) => {
   // im still leaving the stringify call to verify that its an object that can be stringified
   localStorage.setItem(key, data)
 }
-// placeholder, gets replaced by terminal
-_.fn.focus = () => {}
 _.fn.buildBase = () => {
   _.fn.clean()
 
@@ -97,9 +96,6 @@ _.fn.buildBase = () => {
   html.innerHTML = `
 <div class="base-item base-section-content"></div>
 <div class="base-item base-section-terminal"></div>
-<div class="base-item base-section-text-scroller0 text-scroller"></div>
-<div class="base-item base-section-text-scroller1 text-scroller"></div>
-<div class="base-item base-section-tester"></div>
   `
   document.body.append(html)
 
@@ -124,13 +120,13 @@ html {
 .base-section-content {
   border: 1px solid red;
   grid-column: 1 / 15;
-  grid-row: 1 / 18;
+  grid-row: 1 / 20;
 }
 .base-section-terminal {
   border: 1px solid blue;
   overflow-y:auto;
   grid-column: 15 / 20;
-  grid-row: 1 / 16;
+  grid-row: 1 / 20;
 }
 .text-scroller {
   height: 42px;
@@ -173,18 +169,18 @@ html {
   */
   // tried to add 'width:${window.innerWidth / 100 * 30}px' to fix smaller containers taking up too much space problems but it
   // didnt work
-  document.querySelector('.base-section-content').setAttribute('style', `height:${window.innerHeight / 100 * 80}px;`)
+  document.querySelector('.base-section-content').setAttribute('style', `height:${window.innerHeight-20}px;`)
+  document.querySelector('.base-section-terminal').setAttribute('style', `height:${window.innerHeight-20}px;`)
   //document.querySelector('.base-section-text-scroller0').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
   //document.querySelector('.base-section-text-scroller1').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
-  document.querySelector('.base-section-terminal').setAttribute('style', `height:${window.innerHeight / 100 * 60}px;`)
-  document.querySelector('.base-section-tester').setAttribute('style', `height:${window.innerHeight / 100 * 30}px;`)
+  //document.querySelector('.base-section-tester').setAttribute('style', `height:${window.innerHeight / 100 * 30}px;`)
   window.addEventListener('resize', () => {
     // TODO: fix this dupe code. also we need to be able to unbind this if home is ever unloaded
-    document.querySelector('.base-section-content').setAttribute('style', `height:${window.innerHeight / 100 * 80}px;`)
+    document.querySelector('.base-section-content').setAttribute('style', `height:${window.innerHeight-20}px;`)
+    document.querySelector('.base-section-terminal').setAttribute('style', `height:${window.innerHeight-20}px;`)
     //document.querySelector('.base-section-text-scroller0').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
     //document.querySelector('.base-section-text-scroller1').setAttribute('style', `height:${window.innerHeight / 100 * 20}px;`)
-    document.querySelector('.base-section-terminal').setAttribute('style', `height:${window.innerHeight / 100 * 60}px;`)
-    document.querySelector('.base-section-tester').setAttribute('style', `height:${window.innerHeight / 100 * 30}px;`)
+    //document.querySelector('.base-section-tester').setAttribute('style', `height:${window.innerHeight / 100 * 30}px;`)
   })
   
 
@@ -217,7 +213,7 @@ html {
 
     _.module.textScroller.load()
     // note: temporary fetch code
-    setTimeout(() => {
+    /*setTimeout(() => {
       fetch('/data/latest.json')
       .then(x => x.json())
       .then(x => {
@@ -232,7 +228,7 @@ html {
         console.log('got all articles', x)
         _.module.textScroller.fn.createTextScroller('.base-section-text-scroller1', _.fn.shuffle(x.data))
       })
-    }, 1000)
+    }, 1000)*/
   } else {
     console.log(`terminal.buildBase: textScroller tool not loaded`)
   }
@@ -246,5 +242,8 @@ html {
   // defaulting the view to nabnak for now
   if (_.module.nabnak) {
     _.module.nabnak.load('.base-section-content')
+    // I dont have a way for nabnak or terminal to change to nabnak terminal mode without direct communication so im putting
+    // this here
+    _.module.terminal.fn.updateCurrentModule('nabnak')
   }
 }

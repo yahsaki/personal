@@ -175,18 +175,55 @@ _.module.terminal = {
       _.module.terminal.data.currentMode = name
       titleEl.innerText = module[name].code
     },
+    resetCommandHistoryIndex: () => { _.module.terminal.data.commandHistoryIndex = -1 },
     onInputKeyDown: (e) => {
       //console.log('hit', e.key)
       const module = _.module.terminal.data.module
       const currentMode = _.module.terminal.data.currentMode
       if (currentMode !== module.terminal.name) {
         if (e.key === 'Escape') {
+          // now getting in the tech debt range
+          // if there is a current form, cancel that
+          if (_.form.current) { _.form.onCancel();return }
+
           if (typeof _.module[currentMode]?.fn?.cleanup === 'function') {
             _.module[currentMode]?.fn?.cleanup()
           }
           // magiriwashi no namae desu ne, 'module.terminal.name'
           _.module.terminal.fn.updateCurrentModule(module.terminal.name)
           _.module.terminal.fn.prepend('switched to command mode')
+          _.module.terminal.fn.resetCommandHistoryIndex()
+        }
+      }
+
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        if (e.key === 'ArrowUp') {
+          const index = _.module.terminal.data.commandHistoryIndex + 1
+          if (_.module.terminal.data.commandHistory[index]) {
+            e.target.value = _.module.terminal.data.commandHistory[index]
+            _.module.terminal.data.commandHistoryIndex = index
+            return
+          }
+        }
+        if (e.key === 'ArrowDown') {
+          if (_.module.terminal.data.commandHistoryIndex < 0) {
+            e.target.value = ''
+            return
+          }
+          _.module.terminal.data.commandHistoryIndex -= 1
+          if (_.module.terminal.data.commandHistory[_.module.terminal.data.commandHistoryIndex]) {
+            e.target.value = _.module.terminal.data.commandHistory[_.module.terminal.data.commandHistoryIndex]
+            return
+          }
+        }
+      }
+      if (e.key === 'Escape') {
+        // now getting in the tech debt range
+        // if there is a current form, cancel that
+        if (_.form.current) { 
+          _.form.onCancel()
+          _.module.terminal.fn.resetCommandHistoryIndex()
+          return
         }
       }
       if (e.key !== 'Enter') return
@@ -195,9 +232,12 @@ _.module.terminal = {
       const input = e.target.value
       _.module.terminal.fn.handleInput(input)
       e.target.value = ""
+      // man I hope this is good enough
+      _.module.terminal.fn.resetCommandHistoryIndex()
     },
     handleInput: (input) => {
       console.log('terminal.fn.handleInput: input', input)
+      _.module.terminal.data.commandHistory.splice(0, 0, input)
       const currentMode = _.module.terminal.data.currentMode
       const module = _.module.terminal.data.module
       
@@ -245,6 +285,7 @@ _.module.terminal = {
     logs: [],
     // TODO: save command history. why TF didnt I do this originally
     commandHistory: [],
+    commandHistoryIndex: -1,
   },
   // 261006: was torn between implementing the import/export data tool in nabnak then base.js but wound up
   // just implementing it here due to the need of the upload file field. well lets try not to use the field
@@ -256,9 +297,9 @@ _.module.terminal = {
       for (let module in _.module) {
         
         const mod = _.module[module]
-        if (mod.data?.storageKey) {
+        if (mod.setting?.storageKey) {
           // going to be redesigning how data is stored real soon. only nabnak uses 'storageKey' atm
-          const data = _.storage.get(mod.data.storageKey)
+          const data = _.storage.get(mod.setting.storageKey)
           if (data) {
             content[module] = data
           }
@@ -309,14 +350,14 @@ _.module.terminal = {
           // I dont really have a way to validate this thing, gg
           if (!_.module[name]) { continue }
           const mod = _.module[name]
-          if (!mod.data?.storageKey) { continue }
+          if (!mod.setting?.storageKey) { continue }
           // currently specific to nabnak, needs renaming
           if (!mod.fn.get) {
             _.logger.log(`terminal.exporter.import: module '${name}' didnt have a fn.get(will change soon)`,_.logger.level.debug)
             continue
           }
           // alright save data to storage then call the module's fetch data fn
-          _.storage.save(mod.data.storageKey, JSON.stringify(data[name]))
+          _.storage.save(mod.setting.storageKey, JSON.stringify(data[name]))
           mod.fn.get()
           modulesUpdated.push(name)
         }
@@ -533,13 +574,19 @@ _.module.terminal = {
         // need to work on my relative argument referencing. i think migrating to classes will fix this
         args.form.setup(args.form.fields)
       } else {
-        _.logger.log(`form '${args.title}' does not have a setup function`,_.logger.level.debug)
+        _.logger.log(`form '${args.title}' does not have a setup function`,_.logger.level.debug,args)
+      }
+      if (typeof args.form.onSubmit !== 'function') {
+        _.logger.log(`form '${args.title}' missing submit fn`,_.logger.level.error,args);return
+      }
+      if (typeof args.form.onCancel !== 'function') {
+        _.logger.log(`form '${args.title}' missing cancel fn`,_.logger.level.error,args);returns
       }
       _.form.current = {
         title: args.title,
-        fields: structuredClone(args.form.fields),//{...args.form.fields},
-        onSuccess: args.onSuccess,
-        onCancel: args.onCancel,
+        fields: structuredClone(args.form.fields),
+        onSubmit: args.form.onSubmit,
+        onCancel: args.form.onCancel,
       }
       _.form.render()
     },
@@ -592,6 +639,7 @@ _.module.terminal = {
       _.logger.rehydrate()
       _.form.current.onCancel()
       _.form.current = null
+      _.fn.focus()
     },
     // TODO: instead of referencing field types statically, we need to reference them from here, IE
     // text, textarea, tags, hidden, select, etc

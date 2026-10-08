@@ -22,14 +22,13 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- listen for enter key in form to trigger submit
+- iframe proxy. falls under authenticated tools
+- need a way, or pattern to refocus on terminal input after many actions 
 - I cant believe I dont know this. I want the text to stay on one line and invisibly overflow for sections like the text 
   scroller title, nabnak's kanban default view task title, nabnak home project/group navigation title
 - R&D splitting the rendering logic into its own module. its not like there will be issues making it happen, more like
   can we make it work within the ideology of the project
-- select task buggy as hell. not knowing whether its in the proj array or group arr is causing disarray in onTaskUpdateClick
-  if you dont have the group selected properly. we render ALL tasks in the project view, so if you click on a task that belongs
-  to a group but dont have that group selected the attempted update fails. tried to fix but I made it so much worse, need
-  to fix it properly
 - implement a way to slowly fetch data(ex for text scroller) over time instead of hundreds of megs at once. easier on data
   once remote. make it configurable
 - bug: form values arent clearing even though they are created dynamically every time
@@ -92,6 +91,10 @@ todo:
 
 
 completed:
+- 261007: select task buggy as hell. not knowing whether its in the proj array or group arr is causing disarray in onTaskUpdateClick
+  if you dont have the group selected properly. we render ALL tasks in the project view, so if you click on a task that belongs
+  to a group but dont have that group selected the attempted update fails. tried to fix but I made it so much worse, need
+  to fix it properly
 - 261006: pull CVEs manually from git repo and manually generate some consumable data from it. automate this someday
 - integrate nabnak view... up to whatever we have built... to a certain degree(what the F does this mean)
 - 261003: create a form workflow like:
@@ -121,6 +124,8 @@ completed:
 - design how base, views and tools interact with each other
 
 notes:
+- workspaces. local is its own workspace, remote could be a different workspace. keeping things up to date between all participants
+  is the only thing I can think of being a pain(easy fix)
 - 261006: nabnak is quickly approaching one thousands LoC. as it grows, it could be a good idea to split it into multiple plugins
   which defeats the purpose technically since none of them can operate separately but the code will look cleaner.
   giving it more time until it reaches that point
