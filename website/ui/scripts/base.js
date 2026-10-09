@@ -60,8 +60,8 @@ _.storage.get = (key) => {
   const string = localStorage.getItem(key)
   if (!string) return
   try {
-    const data = JSON.parse(string) 
-    return data 
+    const data = JSON.parse(string)
+    return data
   } catch (err) {
     console.log('storage.get: error parsing data to object', err)
     _.logger.log(`storage.get: error parsing data to object`, _.logger.level?.error)
@@ -118,7 +118,7 @@ html {
   box-sizing: border-box;
 }
 .base-section-content {
-  border: 1px solid red;
+  border: 1px solid black;
   grid-column: 1 / 15;
   grid-row: 1 / 20;
 }

@@ -181,6 +181,9 @@ _.module.terminal = {
       const module = _.module.terminal.data.module
       const currentMode = _.module.terminal.data.currentMode
       if (currentMode !== module.terminal.name) {
+        if (_.module[currentMode]?.onInputKeyDown) {
+          _.module[currentMode].onInputKeyDown(e)
+        }
         if (e.key === 'Escape') {
           // now getting in the tech debt range
           // if there is a current form, cancel that
@@ -294,20 +297,22 @@ _.module.terminal = {
     export: (args) => {
       _.logger.log(`terminal.fn.exporter.export: called`,_.logger.level.debug,args)
       const content = {}
+      const skipped = []
       for (let module in _.module) {
-        
-        const mod = _.module[module]
-        if (mod.setting?.storageKey) {
-          // going to be redesigning how data is stored real soon. only nabnak uses 'storageKey' atm
-          const data = _.storage.get(mod.setting.storageKey)
-          if (data) {
-            content[module] = data
-          }
+        if (!_.module[module].setting?.name) {
+          skipped.push(module);continue
+        }
+
+        content[module] = {
+          data: _.storage.get(`${module}-data`),
+          state: _.storage.get(`${module}-state`)
         }
       }
 
       if (!Object.keys(content).length) {
         _.logger.log(`terminal.exporter.export: no data to export`);return
+      } else {
+        _.logger.log(`terminal.exporter.export: data potentially exported for modules ${Object.keys(content).join(', ')}.${skipped.length ? ' modules '+ skipped.join(', ')+ ' skipped due to missing module.setting.name property.' : ''}`)
       }
       
       const blob = new Blob([JSON.stringify(content,' ',2)], { type: 'application/json'})
@@ -350,15 +355,19 @@ _.module.terminal = {
           // I dont really have a way to validate this thing, gg
           if (!_.module[name]) { continue }
           const mod = _.module[name]
-          if (!mod.setting?.storageKey) { continue }
           // currently specific to nabnak, needs renaming
-          if (!mod.fn.get) {
+          if (!mod.db.get) {
             _.logger.log(`terminal.exporter.import: module '${name}' didnt have a fn.get(will change soon)`,_.logger.level.debug)
             continue
           }
-          // alright save data to storage then call the module's fetch data fn
-          _.storage.save(mod.setting.storageKey, JSON.stringify(data[name]))
-          mod.fn.get()
+          if (data[name].state) {
+            _.storage.save(`${name}-state`, JSON.stringify(data[name].state))
+          }
+          if (data[name].data) {
+            _.storage.save(`${name}-data`, JSON.stringify(data[name].data))
+          }
+          
+          mod.db.get()
           modulesUpdated.push(name)
         }
 
