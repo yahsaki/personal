@@ -22,6 +22,12 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- save a truncated command history to storage
+- I swear I wrote this somewhere(nabnak cant come soon enough). 
+  implement key combo to scroll current view. up/down arrow in cli iterates through command history
+- need way to move tasks between groups
+- need delete support
+- filter bleeping posts that contain 'Sponsored and written by' in the body(this text occurs at the end of the article)
 - listen for enter key in form to trigger submit
 - iframe proxy. falls under authenticated tools
 - need a way, or pattern to refocus on terminal input after many actions 

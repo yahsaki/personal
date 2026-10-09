@@ -45,23 +45,30 @@ _.module.nabnak = {
     },
     handleInput: (args) => {
       const mod = _.module.nabnak
-      // this is going to be pure slop for the first few iterations
-      /*
-        I could do something like this:
-        fn = mod.command[args[0]]?[args[1]]
-        if (typeof fn === 'function') fn(otherargs)
-      */
+      
       if (typeof mod.command[args[0]] === 'function') {
         mod.command[args[0]](args)
         return
       }
-      // unreadable garbage dump
       switch (args[0]) {
+        case 'del':
+        case 'delete': {
+          if (!args[1]) {
+            // if only a 'del' command supplied, attempt to delete current selected thing
+            if (!mod.state.selected.length) { _.logger.log(`select something`,_.logger.level.warn);return }
+            mod.fn.doAction(() => { deleteByIndexArray(mod.state.selected) })
+            return
+          }
+          if (!isNaN(args[1][0])) {
+            mod.fn.doAction(() => { deleteByIndexArray(handleIndexString(args[1])) })
+          } else {
+            _.logger.log(`invalid argument '${args[1]}'`,_.logger.level.warn);return
+          }
+        } break
         case 'cl':
         case 'clear': {
-          mod.state.selectedProjectIndex = null
-          mod.state.selectedGroupIndex = null
-          mod.state.selectedTaskIndex = null
+          mod.state.selected = []
+          mod.state.currentPage = mod.setting.defaultPage
           mod.fn.doAction(_.fn.render)
         } break
         case 'c':
@@ -101,7 +108,7 @@ _.module.nabnak = {
             } break
             default: {
               if (!isNaN(args[1][0])) {
-                return handleIndexString(args[1])
+                mod.fn.doAction(() => { selectByIndexArray(handleIndexString(args[1])) })
               } else {
                 _.logger.log(`invalid argument '${args[1]}'`,_.logger.level.warn)
               }
@@ -160,23 +167,27 @@ _.module.nabnak = {
         }
 
         // cleared for takeoff
+        return indexArr
+      }
+      function selectByIndexArray(indexArr) {
+        if (!indexArr) return
         const project = mod.data.projects[indexArr[0]]
         if (!project) {
           _.logger.log(`no project found on index ${indexArr[0]}`,_.logger.level.warn,indexArr);return
         } else {
-          console.log('project', project, indexArr)
+          mod.state.currentPage = mod.setting.projectPage
           if (!isNaN(indexArr[1])) {
             const group = project.groups[indexArr[1]]
             if (!group) {
               _.logger.log(`no group found on index ${indexArr[1]} for project '${project.name}'`,_.logger.level.warn,indexArr);return
             } else {
-              console.log('group', group)
+              mod.state.currentPage = mod.setting.groupPage
               if (!isNaN(indexArr[2])) {
                 const task = group.tasks[indexArr[2]]
                 if (!task) {
                   _.logger.log(`no task found on index ${indexArr[2]} for group '${group.name}', project '${project.name}'`,_.logger.level.warn,indexArr);return
                 }
-                console.log('task', task)
+                mod.state.currentPage = mod.setting.taskPage
               }
             }
           }
@@ -186,6 +197,26 @@ _.module.nabnak = {
         mod.state.selected = indexArr
         mod.fn.doAction(mod.fn.render)
         return
+      }
+      function deleteByIndexArray(indexArr) {
+        if (!indexArr) return
+        const project = mod.data.projects[indexArr[0]]
+        let group, task
+        if (indexArr.length === 1) {
+          _.logger.log(`deleting project WIP`,_.logger.level.debug)
+        }
+        if (indexArr.length === 2) {
+          group = project.groups[indexArr[1]]
+          if (!group) { _.logger.log(`failed to find group via ${indexArr[0]}-${indexArr[1]}`,_.logger.level.warn);return }
+          _.logger.log(`deleting group WIP`,_.logger.level.debug)
+        }
+        if (indexArr.length === 3) {
+          group = project.groups[indexArr[1]]
+          if (!group) { _.logger.log(`failed to find group via ${indexArr[0]}-${indexArr[1]}`,_.logger.level.warn);return }
+          task = group.tasks[indexArr[2]]
+          if (!task) { _.logger.log(`failed to find task via ${indexArr[0]}-${indexArr[1]}-${indexArr[2]}`,_.logger.level.warn);return }
+          _.logger.log(`deleting task WIP`,_.logger.level.debug)
+        }
       }
     },
     // I feel like this pathing is still not right, or optimal
@@ -201,6 +232,7 @@ _.module.nabnak = {
     // high potential to collide with terminal's behaviors
     if (!e.target.value.length) {
       if (e.key === 'Backspace') {
+        
         // if the user hits backspace on an empty cli, unselect the lowest selected entity
         // this should be page depended, so yeah
         mod.state.selected.pop()
@@ -243,14 +275,20 @@ _.module.nabnak = {
   setting: {
     name: 'nabnak', // feels dumb setting it like this. I mean the module is already named this
     defaultPage: 'projectList',
+    projectPage: 'project',
+    groupPage: 'group',
+    taskPage: 'task',
+    kanbanPage: 'kanban',
   },
   // attempting to keep these as strings so it can be saved/restored
   // how about we keep all prop names flattened here
   state: {
     // index tree of selected project/group/task. not sure if comments need this level of support... shouldnt
     selected: [],
-    // shit mayne lets do it. lets navigate pages via array items
+    // eventually support back button
     page: [],
+    // sticking with this prop for a bit
+    currentPage: null,
   },
   // would like this entire object to be saved to localstorage, not just data.projects like before
   data: {},
@@ -372,37 +410,59 @@ _.module.nabnak = {
       height: 98%;
       overflow: auto;
     }
-    .project-list {}
-    .project-list .title {
+    .project-list-page {}
+    .project-list-page .title {
       display: block;
       font-weight: bold;
       color: #04D9FF;
     }
-    .project-list .project {
+    .project-list-page .project {
       border: 1px solid #66FF66;
       margin: 4px;
       padding: 4px;
     }
-    .project-list .project .title {}
-    .project-list .group {
+    .project-list-page .project .title {}
+    .project-list-page .group {
       border: 1px solid yellow;
       margin: 4px;
       padding: 4px;
     }
-    .project-list .task {
+    .project-list-page .task {
       border: 1px solid red;
       margin: 4px;
       padding: 4px;
+    }
+    .project-page {
+      text-align: center;
+      font-size: 20px;
+    }
+    .project-page .project-title {
+      display: block;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .project-page .project-dates {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .project-page .description {
+      padding: 10px;
+    }
+    .project-page .tags {
+      padding: 10px;
     }
     `
     document.head.append(style)
   },
   page: {
+    kanban: () => {
+      _.logger.log(`unimplemented`,_.logger.level.error)
+    },
     projectList: () => {
       const mod = _.module.nabnak
       const parentEl = document.querySelector(mod.setting.parentSelector)
       let html = `
-      <div class="nabnak project-list">
+      <div class="nabnak project-list-page">
         ${renderProjects()}
       </div>
       `
@@ -459,6 +519,54 @@ _.module.nabnak = {
         }
         return string
       }
-    }
+    },
+    project: () => {
+      const mod = _.module.nabnak
+      // users(me only) have the ability to modify selected object with one keypress, so lets check if a selected project still
+      // exists on render. if not, change page to default for now. I dont like that logic living here but I cant think of a better
+      // solution until more code exists
+      if (!mod.state.selected.length) {
+        mod.state.currentPage = mod.setting.defaultPage
+        mod.fn.doAction(mod.fn.render)
+        return
+      }
+      const parentEl = document.querySelector(mod.setting.parentSelector)
+      let html = `
+      <div class="nabnak project-page">
+        ${renderProject()}
+      </div>
+      `
+      parentEl.innerHTML = html
+
+      function renderProject() {
+        const project = mod.data.projects[mod.state.selected[0]]
+        let string = `
+        <div class="project">
+          <div class="title-container">
+            <span class="title project-title">${project.name}</span>
+          </div>
+          <div class="project-content">
+            <div class="project-dates">
+              <div class="date-updated">
+                Updated: ${project.date_updated}
+              </div>
+              <div class="date-created">
+                Created: ${project.date_created}
+              </div>
+            </div>
+            <div class="description">
+              ${project.description}
+            </div>
+            <div class="tags">
+              <b>Tags: </b>${project.tags.join(', ')}
+            </div>
+          </div>
+        </div>
+        `
+        return string
+      }
+    },
+    group: () => {},
+    task: () => {},
   }
 }
