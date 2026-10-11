@@ -574,6 +574,11 @@ _.module.terminal = {
       _.fn.createElement('br',[],null,formEl)
       _.fn.createElement('button',[{name:'onclick',val:'_.form.onCancel()'}],'cancel',formEl)
       _.fn.createElement('button',[{name:'onclick',val:'_.form.onSubmit()'}],'submit',formEl)
+      formEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          if (_.form.current) { _.module.terminal.form.onSubmit() }
+        }
+      })
       // so far this is the only line I need to replace to make this its own thing(plus add more logic of course)
       _.module.terminal.fn.prepend(formEl)
     },
@@ -630,7 +635,7 @@ _.module.terminal = {
         // rehydrate logs
         _.logger.rehydrate()
         // submit results to caller
-        _.form.current.onSuccess(_.form.current.fields)
+        _.form.current.onSubmit(_.form.current.fields)
         // this should be green but whatever
         _.logger.log(`form successfully submitted ＼（＾０＾）ノ,`)
         // purge current

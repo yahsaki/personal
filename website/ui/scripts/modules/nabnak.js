@@ -66,6 +66,7 @@ _.module.nabnak = {
           }
         } break
         case 'cl':
+        case 'reset':
         case 'clear': {
           mod.state.selected = []
           mod.state.currentPage = mod.setting.defaultPage
@@ -79,10 +80,10 @@ _.module.nabnak = {
               mod.fn.doAction(mod.fn.create.project)
             } break
             case 'group': {
-              _.logger.log('unimplemented',_.logger.level.error,args)
+              mod.fn.doAction(mod.fn.create.group)
             } break
             case 'task': {
-              _.logger.log('unimplemented',_.logger.level.error,args)
+              mod.fn.doAction(mod.fn.create.task)
             } break
             default: {
               _.logger.log(`invalid argument '${args[1]}'`,_.logger.level.warn)
@@ -132,7 +133,11 @@ _.module.nabnak = {
               _.logger.log('unimplemented',_.logger.level.error,args)
             } break
             default: {
-              _.logger.log(`invalid select argument '${args[1]}'`,_.logger.level.warn)
+              if (!isNaN(args[1][0])) {
+                mod.fn.doAction(() => { updateByIndexArray(handleIndexString(args[1])) })
+              } else {
+                _.logger.log(`invalid argument '${args[1]}'`,_.logger.level.warn)
+              }
             } break
           }
         } break
@@ -142,6 +147,7 @@ _.module.nabnak = {
       }
 
       // slightly breaking my rules with this embedded function but I really dont want it anywhere else
+      // these embedded fns are technically hacks. to fix this, implement project/group/task maps
       function handleIndexString(string) {
         // alright super simple implementation. if project/group already selected, prepend them to the indexArr. going
         // to ignore the selected
@@ -168,6 +174,29 @@ _.module.nabnak = {
 
         // cleared for takeoff
         return indexArr
+      }
+      // I think its really cool how these <update/select/delete> by index array fns are implemented differently
+      function updateByIndexArray(indexArr) {
+        if (!indexArr) return
+        const project = mod.data.projects[indexArr[0]]
+        if (!project) {
+          _.logger.log(`no project found on index ${indexArr[0]}`,_.logger.level.warn,indexArr);return
+        }
+        if (isNaN(indexArr[1])) {
+          _.logger.log(`trigger update project form`,_.logger.level.error);return
+        }
+        const group = project.groups[indexArr[1]]
+        if (!group) {
+          _.logger.log(`no group found on index ${indexArr[1]} for project '${project.name}'`,_.logger.level.warn,indexArr);return
+        }
+        if (isNaN(indexArr[2])) {
+          _.logger.log(`trigger update group form`,_.logger.level.error);return
+        }
+        const task = group.tasks[indexArr[2]]
+        if (!task) {
+          _.logger.log(`no task found on index ${indexArr[2]} for group '${group.name}', project '${project.name}'`,_.logger.level.warn,indexArr);return
+        }
+        _.logger.log(`trigger update task form`,_.logger.level.error);return
       }
       function selectByIndexArray(indexArr) {
         if (!indexArr) return
@@ -222,8 +251,13 @@ _.module.nabnak = {
     // I feel like this pathing is still not right, or optimal
     create: {
       project: () => {
-        const mod = _.module.nabnak
-        _.form.load({ title: 'Create Project', form: mod.form.project })
+        _.form.load({ title: 'Create Project', form: _.module.nabnak.form.project })
+      },
+      group: () => {
+        _.form.load({ title: 'Create Group', form: _.module.nabnak.form.group })
+      },
+      task: () => {
+        _.form.load({ title: 'Create Task', form: _.module.nabnak.form.task })
       },
     }
   },
@@ -351,41 +385,117 @@ _.module.nabnak = {
     },
   },
   form: {
+    onCancel: () => { _.logger.log(`nabnak.form.onCancel: form cancelled`,_.logger.level.debug) },
     project: {
       setup: (fields) => {},
-      onSubmit: (args) => { _.logger.log(`form submitted`,_.logger.level.debug,args) },
-      onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
       fields: {
         id: { type: 'hidden' },
         name: { type: 'text', required: true },
         description: { type: 'text' },
         tags: { type: 'tags' },
+      },
+      onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
+      onSubmit: (args) => {
+        const mod = _.module.nabnak
+        _.logger.log(`form submitted`,_.logger.level.debug,args)
+        const project = {...mod.schema.project}
+        const date = new Date()
+        project.id = crypto.randomUUID()
+        project.name = args.name.value
+        project.description = args.description.value
+        if (args.tags.value.length) {
+          // _.form handles cleaning up tags
+          project.tags = args.tags.value.split(',')
+        }
+        project.date_created = date.toISOString()
+        project.date_updated = date.toISOString()
+        // hackish. TODO: some shared fn should be creating this group
+        // we could create a field for group name, default it to 'default'
+        project.groups.push({
+          ...mod.schema.group,
+          id: crypto.randomUUID(),
+          name: 'default',
+          date_created: date.toISOString(),
+          date_updated: date.toISOString(),
+        })
+        mod.data.projects.push(project)
+        _.logger.log(`project '${project.name}' created`)
+        mod.db.save()
+        mod.fn.doAction(_.fn.render)
       },
     },
     group: {
-      setup: (fields) => {},
-      onSubmit: (args) => { _.logger.log(`form submitted`,_.logger.level.debug,args) },
-      onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
+      setup: (fields) => {
+        const mod = _.module.nabnak
+        fields.project.options = mod.data.projects.map(x => ({ id: x.id, name: x.name }))
+        const project = mod.data.projects[mod.state.selected[0]]
+        if (project) {
+          fields.project.value = project.id
+        }
+      },
       fields: {
         id: { type: 'hidden' },
-        projectId: { type: 'hidden' },  
+        project: { type: 'select', options: [], required: true },
         name: { type: 'text', required: true },
         description: { type: 'text' },
         tags: { type: 'tags' },
-      }
+      },
+      onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
+      onSubmit: (args) => {
+        const mod = _.module.nabnak
+        _.logger.log(`form submitted`,_.logger.level.debug,args)
+        const project = mod.data.projects.find(x => x.id === args.project.value)
+        if (!project) {
+          _.logger.log(`failed to find project by id '${args.project.value}'`,_.logger.level.warn);return
+        }
+        const group = {...mod.schema.group}
+        const date = new Date()
+        group.id = crypto.randomUUID()
+        group.name = args.name.value
+        group.description = args.description.value
+        if (args.tags.value.length) { group.tags = args.tags.value.split(',') }
+        group.date_created = date.toISOString()
+        group.date_updated = date.toISOString()
+        project.groups.push(group)
+        _.logger.log(`group '${group.name}' created for project '${project.name}'`,_.logger.level.info,group)
+        mod.db.save()
+        mod.fn.doAction(_.fn.render)
+      },
     },
     task: {
       setup: (fields) => {
+        // 261010: to fully support task they way we support group select project DDL, we would need to create project/group
+        // DDLs that changes their values on value change, IE when the project DDL changes, the group's value must change with it.
+        // not going to support this at this time SO a project MUST be selected for create task to work
         const mod = _.module.nabnak
         fields.status.options = Object.keys(mod.schema.enum.status)
         fields.priority.options = Object.keys(mod.schema.enum.priority)
+        const project = mod.data.projects[mod.state.selected[0]]
+        if (!project) {
+          const text = `please select project to create a task`
+          _.logger.log(text,_.logger.level.error)
+          throw Error(text)
+        }
+        fields.projectId.value = project.id
+        if (!project.groups.length) {
+          // currently the only 'no groups' check in the module
+          const text = `project '${project.name}' needs at least one group`
+          _.logger.log(text,_.logger.level.error)
+          throw Error(text)
+        }
+        // cant wait to maps
+        const group = project.groups[mod.state.selected[1]]
+        if (group) { fields.group.value = group.id }
+        else {
+          // just going to default it to the first one for now
+          fields.group.value = project.groups[0].id
+        }
+        fields.group.options = project.groups.map(x => ({ id:x.id, name:x.name }))
       },
-      onSubmit: (args) => { _.logger.log(`form submitted`,_.logger.level.debug,args) },
-      onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
       fields: {
         id: { type: 'hidden' },
         projectId: { type: 'hidden' },
-        groupId: { type: 'hidden' },
+        group: { type: 'select', options: [], required: true },
         name: { type: 'text', required: true },
         description: { type: 'text' },
         tags: { type: 'tags' },
@@ -393,7 +503,33 @@ _.module.nabnak = {
         acceptanceCriteria: { type: 'textarea', displayName: 'Acceptance Criteria' },
         status: { type: 'select', required: true, options: [] },
         priority: { type: 'select', options: [] }
-      }
+      },
+      onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
+      onSubmit: (args) => {
+        const mod = _.module.nabnak
+        _.logger.log(`form submitted`,_.logger.level.debug,args)
+        const project = mod.data.projects.find(x => x.id === args.projectId.value)
+        if (!project) { _.logger.log(`projectId '${args.projectId.value}' doesnt match any projects`,_.logger.level.warn,args);return }
+        const group = project.groups.find(x => x.id === args.group.value)
+        if (!group) { _.logger.log(`groupId '${args.group.value}' doesnt match any groups for project '${project.name}'`,_.logger.level.warn,args);return }
+        const task = {...mod.schema.task}
+        const date = new Date()
+        task.id = crypto.randomUUID() // we technically dont need these yet which is crazy
+        task.name = args.name.value
+        task.description = args.description.value
+        task.acceptanceCriteria = args.acceptanceCriteria.value
+        task.status = args.status.value
+        task.priority = args.priority.value
+        if (args.tags.value.length) { task.tags = args.tags.value.split(',') }
+        task.date_created = date.toISOString()
+        task.date_updated = date.toISOString()
+
+        _.logger.log(`task '${task.name}' created and added to group '${group.name}' to project '${project.name}'`)
+        group.tasks.push(task)
+        
+        mod.db.save()
+        mod.fn.doAction(_.fn.render)
+      },
     }
   },
   // temporary name yet again

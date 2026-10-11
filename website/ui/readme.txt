@@ -22,6 +22,42 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- 261010: BUG-this is most likely going to fix itself when more views are added, but currently:
+  - when on the project list view
+  - select any group by command 's <pid>-<gid>'
+  - create task via 'create task'
+  - once created, the view doesnt update even though render was called
+  - when refreshing, the view is blank(there is no group view yet but still)
+- on the projects list page, when navigating down using whatever key combo, we should scroll to view
+   each project -> group in view order, skip tasks... I think(I honestly want to skip groups too)
+- 'date_updated' values need to be properly set across the board
+- bug: 'enter' button tries to submit project when pressing key while cancel button is active
+- implement a way to track last active element(s) and refocus on them if applicable when applicable
+    ```
+    let currentFocus = document.activeElement;
+    let previousFocus = null;
+    document.addEventListener('focusin', () => {
+      previousFocus = currentFocus;  
+      currentFocus = document.activeElement;
+      console.log('Previously focused:', previousFocus);
+      console.log('Currently focused:', currentFocus);
+    });
+    ```
+
+    ```
+    let lastFocusedElement = null;
+    window.addEventListener('blur', (event) => {
+      lastFocusedElement = event.target; 
+    }, true); 
+    ```
+- descriptions should support line breaks, no need for rich text(it prolly already supports this)
+- support images in nabnak
+- homepage should show tasks in an overdue -> soon overdue kinda format. put some flashies on it
+- save deleted objects to its own array. give them a TTL. no need to expose a view for them for now
+- future task: same as mp2g, and I mean literally, make maps of all resources(hydrate) and work with that. when it comes time to
+  save, convert the maps(dehydrate) into its original structure
+- I want an archival group because I dont want to see hundreds of completed things clustering the view. seems like we would need
+  to create a flag on group to hide tasks from most views
 - save a truncated command history to storage
 - I swear I wrote this somewhere(nabnak cant come soon enough). 
   implement key combo to scroll current view. up/down arrow in cli iterates through command history
@@ -30,14 +66,12 @@ todo:
 - filter bleeping posts that contain 'Sponsored and written by' in the body(this text occurs at the end of the article)
 - listen for enter key in form to trigger submit
 - iframe proxy. falls under authenticated tools
-- need a way, or pattern to refocus on terminal input after many actions 
 - I cant believe I dont know this. I want the text to stay on one line and invisibly overflow for sections like the text 
   scroller title, nabnak's kanban default view task title, nabnak home project/group navigation title
 - R&D splitting the rendering logic into its own module. its not like there will be issues making it happen, more like
   can we make it work within the ideology of the project
 - implement a way to slowly fetch data(ex for text scroller) over time instead of hundreds of megs at once. easier on data
   once remote. make it configurable
-- bug: form values arent clearing even though they are created dynamically every time
 - clear previous form if triggering new form while another is active
 - implement command to stop text scrollers(release data for the most part). now I dont want to leave my site on
 - add .index(nullable int) to all everything
@@ -97,6 +131,8 @@ todo:
 
 
 completed:
+- need a way, or pattern to refocus on terminal input after many actions 
+- foreverago: bug: form values arent clearing even though they are created dynamically every time
 - 261007: select task buggy as hell. not knowing whether its in the proj array or group arr is causing disarray in onTaskUpdateClick
   if you dont have the group selected properly. we render ALL tasks in the project view, so if you click on a task that belongs
   to a group but dont have that group selected the attempted update fails. tried to fix but I made it so much worse, need
@@ -129,7 +165,7 @@ completed:
 - set up layout
 - design how base, views and tools interact with each other
 
-notes:
+notes/ideas:
 - workspaces. local is its own workspace, remote could be a different workspace. keeping things up to date between all participants
   is the only thing I can think of being a pain(easy fix)
 - 261006: nabnak is quickly approaching one thousands LoC. as it grows, it could be a good idea to split it into multiple plugins
