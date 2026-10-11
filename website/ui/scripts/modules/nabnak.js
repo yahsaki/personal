@@ -118,7 +118,9 @@ _.module.nabnak = {
         } break
         case 'u':
         case 'update': {
-          if (!args[1]) { _.logger.log(`missing next argument`,_.logger.level.warn);return }
+          if (!args[1]) {
+            return mod.fn.doAction(() => { updateByIndexArray(handleIndexString()) })
+          }
           switch (args[1]) {
             case 'project': {
               if (!args[2]) { _.logger.log(`missing index argument`,_.logger.level.warn);return }
@@ -148,11 +150,24 @@ _.module.nabnak = {
 
       // slightly breaking my rules with this embedded function but I really dont want it anywhere else
       // these embedded fns are technically hacks. to fix this, implement project/group/task maps
+      // 261011: now that we can pass nulls here this name is somewhat invalid. defaulting the arg to an empty array or
+      // something doesnt quite work without refactoring
       function handleIndexString(string) {
         // alright super simple implementation. if project/group already selected, prepend them to the indexArr. going
         // to ignore the selected
         let validIndexArgumentCount = 3
-        const indexArr = string.split('-').map(x => (parseInt(x)))
+        let indexArr
+        if (!string) { indexArr = [] }
+        else { 
+          indexArr = string.split('-').map(x => {
+            const int = parseInt(x)
+            if (isNaN(int)) {
+              _.logger.log(`index string '${string}' invalid`,_.logger.level.error)
+              throw Error(`index string '${string}' invalid`)
+            }
+            return int
+          })
+        }
         if (indexArr.length > validIndexArgumentCount) {
           _.logger.log(`too many index arguments provided`,_.logger.level.warn,indexArr);return
         }
@@ -167,7 +182,7 @@ _.module.nabnak = {
             indexArr.splice(0, 0, copyOfState.pop())
           }
         }
-        // below is an exact copy of the above code
+        
         if (indexArr.length > validIndexArgumentCount) {
           _.logger.log(`too many index arguments provided`,_.logger.level.warn,indexArr);return
         }
@@ -183,20 +198,25 @@ _.module.nabnak = {
           _.logger.log(`no project found on index ${indexArr[0]}`,_.logger.level.warn,indexArr);return
         }
         if (isNaN(indexArr[1])) {
-          _.logger.log(`trigger update project form`,_.logger.level.error);return
+          // hack: dont want to force the currently selected thing to be this on update but I got no choice due to some
+          // terrible code in task.form's setup function
+          mod.state.selected = indexArr
+          mod.fn.update.project(project);return
         }
         const group = project.groups[indexArr[1]]
         if (!group) {
           _.logger.log(`no group found on index ${indexArr[1]} for project '${project.name}'`,_.logger.level.warn,indexArr);return
         }
         if (isNaN(indexArr[2])) {
-          _.logger.log(`trigger update group form`,_.logger.level.error);return
+          mod.state.selected = indexArr
+          mod.fn.update.group({project,group});return
         }
         const task = group.tasks[indexArr[2]]
         if (!task) {
           _.logger.log(`no task found on index ${indexArr[2]} for group '${group.name}', project '${project.name}'`,_.logger.level.warn,indexArr);return
         }
-        _.logger.log(`trigger update task form`,_.logger.level.error);return
+        mod.state.selected = indexArr
+        mod.fn.update.task({project,group,task});return
       }
       function selectByIndexArray(indexArr) {
         if (!indexArr) return
@@ -251,15 +271,102 @@ _.module.nabnak = {
     // I feel like this pathing is still not right, or optimal
     create: {
       project: () => {
-        _.form.load({ title: 'Create Project', form: _.module.nabnak.form.project })
+        _.form.load({ 
+          title: 'Create Project',
+          form: _.module.nabnak.form.project,
+          onSubmit: _.module.nabnak.form.project.onSubmit.create,
+          onCancel: _.module.nabnak.form.onCancel,
+        })
       },
       group: () => {
-        _.form.load({ title: 'Create Group', form: _.module.nabnak.form.group })
+        _.form.load({
+          title: 'Create Group',
+          form: _.module.nabnak.form.group,
+          onSubmit: _.module.nabnak.form.group.onSubmit.create,
+          onCancel: _.module.nabnak.form.onCancel,
+        })
       },
       task: () => {
-        _.form.load({ title: 'Create Task', form: _.module.nabnak.form.task })
+        _.form.load({
+          title: 'Create Task',
+          form: _.module.nabnak.form.task,
+          onSubmit: _.module.nabnak.form.task.onSubmit.create,
+          onCancel: _.module.nabnak.form.onCancel,
+        })
       },
-    }
+    },
+    update: {
+      project: (project) => {
+        const mod = _.module.nabnak
+        const form = {
+          setup: mod.form.project.setup,
+          fields: structuredClone(mod.form.project.fields)
+        }
+        form.fields.id.value = project.id
+        form.fields.name.value = project.name
+        form.fields.description.value = project.description
+        form.fields.tags.value = project.tags.join(',')
+
+        _.form.load({ 
+          title: 'Update Project',
+          form,
+          onSubmit: mod.form.project.onSubmit.update,
+          onCancel: mod.form.onCancel,
+        })
+      },
+      group: (args) => {
+        const mod = _.module.nabnak
+        const project = args.project
+        const group = args.group
+        const form = {
+          setup: mod.form.group.setup,
+          fields: structuredClone(mod.form.group.fields)
+        }
+        form.fields.id.value = group.id
+        form.fields.project.value = project.id
+        // changing project to hidden because I am not supporting changing projects atm(never done this before)
+        form.fields.project.type = 'hidden'
+        form.fields.name.value = group.name
+        form.fields.description.value = group.description
+        form.fields.tags.value = group.tags.join(',')
+
+        _.form.load({
+          title: 'Update Group',
+          form,
+          onSubmit: mod.form.group.onSubmit.update,
+          onCancel: mod.form.onCancel,
+        })
+      },
+      task: (args) => {
+        const mod = _.module.nabnak
+        const project = args.project
+        const group = args.group
+        const task = args.task
+
+        const form = {
+          setup: mod.form.task.setup,
+          fields: structuredClone(mod.form.task.fields),
+        }
+        form.fields.id.value = task.id
+        form.fields.projectId.value = project.id
+        // same as group, im hiding the control on update to support changing groups later
+        form.fields.group.type = 'hidden'
+        form.fields.group.value = group.id
+        form.fields.name.value = task.name
+        form.fields.description.value = task.description
+        form.fields.tags.value = task.tags.join(',')
+        form.fields.acceptanceCriteria.value = task.acceptanceCriteria
+        form.fields.status.value = task.status
+        form.fields.priority.value = task.priority
+
+        _.form.load({
+          title: 'Update Task',
+          form,
+          onSubmit: mod.form.task.onSubmit.update,
+          onCancel: mod.form.onCancel,
+        })
+      },
+    },
   },
   onInputKeyDown: (e) => {
     const mod = _.module.nabnak
@@ -395,33 +502,55 @@ _.module.nabnak = {
         tags: { type: 'tags' },
       },
       onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
-      onSubmit: (args) => {
-        const mod = _.module.nabnak
-        _.logger.log(`form submitted`,_.logger.level.debug,args)
-        const project = {...mod.schema.project}
-        const date = new Date()
-        project.id = crypto.randomUUID()
-        project.name = args.name.value
-        project.description = args.description.value
-        if (args.tags.value.length) {
-          // _.form handles cleaning up tags
-          project.tags = args.tags.value.split(',')
+      // 261011: placing these fns here no longer makes sense but whatever, changing it later
+      // the true loss here is if delete doesnt use a form which means we'll have to place that somewhere else...
+      // im just going to put delete here anyway screw it
+      onSubmit: {
+        create: (args) => {
+          const mod = _.module.nabnak
+          _.logger.log(`form submitted`,_.logger.level.debug,args)
+          const project = {...mod.schema.project}
+          const date = new Date()
+          project.id = crypto.randomUUID()
+          project.name = args.name.value
+          project.description = args.description.value
+          if (args.tags.value.length) {
+            // _.form handles cleaning up tags
+            project.tags = args.tags.value.split(',')
+          }
+          project.date_created = date.toISOString()
+          project.date_updated = date.toISOString()
+          // hackish. TODO: some shared fn should be creating this group
+          // we could create a field for group name, default it to 'default'
+          project.groups.push({
+            ...mod.schema.group,
+            id: crypto.randomUUID(),
+            name: 'default',
+            date_created: date.toISOString(),
+            date_updated: date.toISOString(),
+          })
+          mod.data.projects.push(project)
+          _.logger.log(`project '${project.name}' created`)
+          mod.db.save()
+          mod.fn.doAction(_.fn.render)
+        },
+        update: (args) => {
+          const mod = _.module.nabnak
+          _.logger.log(`form submitted`,_.logger.level.debug,args)
+          const project = mod.data.projects.find(x => x.id === args.id.value)
+          if (!project) {
+            _.logger.log(`failed to find project by id '${args.id.value}'`,_.logger.level.warn,args)
+            return
+          }
+          project.name = args.name.value
+          project.description = args.description.value
+          if (args.tags.value.length) { project.tags = args.tags.value.split(',') }
+          project.date_updated = new Date().toISOString()
+
+          mod.db.save()
+          _.logger.log(`project '${project.name}' updated`)
+          mod.fn.doAction(_.fn.render)
         }
-        project.date_created = date.toISOString()
-        project.date_updated = date.toISOString()
-        // hackish. TODO: some shared fn should be creating this group
-        // we could create a field for group name, default it to 'default'
-        project.groups.push({
-          ...mod.schema.group,
-          id: crypto.randomUUID(),
-          name: 'default',
-          date_created: date.toISOString(),
-          date_updated: date.toISOString(),
-        })
-        mod.data.projects.push(project)
-        _.logger.log(`project '${project.name}' created`)
-        mod.db.save()
-        mod.fn.doAction(_.fn.render)
       },
     },
     group: {
@@ -441,25 +570,50 @@ _.module.nabnak = {
         tags: { type: 'tags' },
       },
       onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
-      onSubmit: (args) => {
-        const mod = _.module.nabnak
-        _.logger.log(`form submitted`,_.logger.level.debug,args)
-        const project = mod.data.projects.find(x => x.id === args.project.value)
-        if (!project) {
-          _.logger.log(`failed to find project by id '${args.project.value}'`,_.logger.level.warn);return
+      onSubmit: {
+        create: (args) => {
+          const mod = _.module.nabnak
+          _.logger.log(`form submitted`,_.logger.level.debug,args)
+          const project = mod.data.projects.find(x => x.id === args.project.value)
+          if (!project) {
+            _.logger.log(`failed to find project by id '${args.project.value}'`,_.logger.level.warn);return
+          }
+          const group = {...mod.schema.group}
+          const date = new Date()
+          group.id = crypto.randomUUID()
+          group.name = args.name.value
+          group.description = args.description.value
+          if (args.tags.value.length) { group.tags = args.tags.value.split(',') }
+          group.date_created = date.toISOString()
+          group.date_updated = date.toISOString()
+          project.groups.push(group)
+          _.logger.log(`group '${group.name}' created for project '${project.name}'`,_.logger.level.info,group)
+          mod.db.save()
+          mod.fn.doAction(_.fn.render)
+        },
+        update: (args) => {
+          const mod = _.module.nabnak
+          _.logger.log(`form submitted`,_.logger.level.debug,args)
+          const project = mod.data.projects.find(x => x.id === args.project.value)
+          if (!project) {
+            _.logger.log(`failed to find project by id '${args.project.value}'`,_.logger.level.warn);return
+          }
+          const group = project.groups.find(x => x.id === args.id.value)
+          if (!group) {
+            _.logger.log(`failed to find group by id '${args.id.value}'`,_.logger.level.warn);return
+          }
+
+          // TODO: support moving groups between projects(WTF) because the dumbass field lets you change it. not
+          // implementing that right now, same for tasks
+          group.name = args.name.value
+          group.description = args.description.value
+          if (args.tags.value.length) { group.tags = args.tags.value.split(',') }
+          group.date_updated = new Date().toISOString()
+
+          mod.db.save()
+          _.logger.log(`group '${group.name}' updated for project '${project.name}'`,_.logger.level.info,group)
+          mod.fn.doAction(_.fn.render)
         }
-        const group = {...mod.schema.group}
-        const date = new Date()
-        group.id = crypto.randomUUID()
-        group.name = args.name.value
-        group.description = args.description.value
-        if (args.tags.value.length) { group.tags = args.tags.value.split(',') }
-        group.date_created = date.toISOString()
-        group.date_updated = date.toISOString()
-        project.groups.push(group)
-        _.logger.log(`group '${group.name}' created for project '${project.name}'`,_.logger.level.info,group)
-        mod.db.save()
-        mod.fn.doAction(_.fn.render)
       },
     },
     task: {
@@ -505,30 +659,54 @@ _.module.nabnak = {
         priority: { type: 'select', options: [] }
       },
       onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
-      onSubmit: (args) => {
-        const mod = _.module.nabnak
-        _.logger.log(`form submitted`,_.logger.level.debug,args)
-        const project = mod.data.projects.find(x => x.id === args.projectId.value)
-        if (!project) { _.logger.log(`projectId '${args.projectId.value}' doesnt match any projects`,_.logger.level.warn,args);return }
-        const group = project.groups.find(x => x.id === args.group.value)
-        if (!group) { _.logger.log(`groupId '${args.group.value}' doesnt match any groups for project '${project.name}'`,_.logger.level.warn,args);return }
-        const task = {...mod.schema.task}
-        const date = new Date()
-        task.id = crypto.randomUUID() // we technically dont need these yet which is crazy
-        task.name = args.name.value
-        task.description = args.description.value
-        task.acceptanceCriteria = args.acceptanceCriteria.value
-        task.status = args.status.value
-        task.priority = args.priority.value
-        if (args.tags.value.length) { task.tags = args.tags.value.split(',') }
-        task.date_created = date.toISOString()
-        task.date_updated = date.toISOString()
+      onSubmit: {
+        create: (args) => {
+          const mod = _.module.nabnak
+          _.logger.log(`form submitted`,_.logger.level.debug,args)
+          const project = mod.data.projects.find(x => x.id === args.projectId.value)
+          if (!project) { _.logger.log(`projectId '${args.projectId.value}' doesnt match any projects`,_.logger.level.warn,args);return }
+          const group = project.groups.find(x => x.id === args.group.value)
+          if (!group) { _.logger.log(`groupId '${args.group.value}' doesnt match any groups for project '${project.name}'`,_.logger.level.warn,args);return }
+          const task = {...mod.schema.task}
+          const date = new Date()
+          task.id = crypto.randomUUID() // we technically dont need these yet which is crazy
+          task.name = args.name.value
+          task.description = args.description.value
+          task.acceptanceCriteria = args.acceptanceCriteria.value
+          task.status = args.status.value
+          task.priority = args.priority.value
+          if (args.tags.value.length) { task.tags = args.tags.value.split(',') }
+          task.date_created = date.toISOString()
+          task.date_updated = date.toISOString()
 
-        _.logger.log(`task '${task.name}' created and added to group '${group.name}' to project '${project.name}'`)
-        group.tasks.push(task)
-        
-        mod.db.save()
-        mod.fn.doAction(_.fn.render)
+          _.logger.log(`task '${task.name}' created and added to group '${group.name}' to project '${project.name}'`)
+          group.tasks.push(task)
+
+          mod.db.save()
+          mod.fn.doAction(_.fn.render)
+        },
+        update: (args) => {
+          const mod = _.module.nabnak
+          _.logger.log(`form submitted`,_.logger.level.debug,args)
+          const project = mod.data.projects.find(x => x.id === args.projectId.value)
+          if (!project) { _.logger.log(`projectId '${args.projectId.value}' doesnt match any projects`,_.logger.level.warn,args);return }
+          const group = project.groups.find(x => x.id === args.group.value)
+          if (!group) { _.logger.log(`groupId '${args.group.value}' doesnt match any groups for project '${project.name}'`,_.logger.level.warn,args);return }
+          const task = group.tasks.find(x => x.id === args.id.value)
+          if (!task) { _.logger.log(`failed to find task by id '${args.id.value}' for group '${group.name}' for project '${project.name}'`,_.logger.level.warn,args);return }
+
+          task.name = args.name.value
+          task.description = args.description.value
+          task.acceptanceCriteria = args.acceptanceCriteria.value
+          task.status = args.status.value
+          task.priority = args.priority.value
+          if (args.tags.value.length) { task.tags = args.tags.value.split(',') }
+          task.date_updated = new Date().toISOString()
+
+          mod.db.save()
+          _.logger.log(`task '${task.name}' updated for group '${group.name}' for project '${project.name}'`)
+          mod.fn.doAction(_.fn.render)
+        }
       },
     }
   },

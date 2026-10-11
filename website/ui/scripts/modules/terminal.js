@@ -590,17 +590,17 @@ _.module.terminal = {
       } else {
         _.logger.log(`form '${args.title}' does not have a setup function`,_.logger.level.debug,args)
       }
-      if (typeof args.form.onSubmit !== 'function') {
+      if (typeof args.onSubmit !== 'function') {
         _.logger.log(`form '${args.title}' missing submit fn`,_.logger.level.error,args);return
       }
-      if (typeof args.form.onCancel !== 'function') {
-        _.logger.log(`form '${args.title}' missing cancel fn`,_.logger.level.error,args);returns
+      if (typeof args.onCancel !== 'function') {
+        _.logger.log(`form '${args.title}' missing cancel fn`,_.logger.level.error,args);return
       }
       _.form.current = {
         title: args.title,
         fields: structuredClone(args.form.fields),
-        onSubmit: args.form.onSubmit,
-        onCancel: args.form.onCancel,
+        onSubmit: args.onSubmit,
+        onCancel: args.onCancel,
       }
       _.form.render()
     },
