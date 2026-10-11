@@ -53,6 +53,12 @@ _.module.nabnak = {
       switch (args[0]) {
         case 'del':
         case 'delete': {
+          // only supporting deleting by currently selected thing for a bit. current confirmation implementation depends on
+          // that too. fully intend to create the form confirmation version later(some decade)
+          if (!mod.state.selected.length) { _.logger.log(`select something`,_.logger.level.warn);return }
+          mod.fn.doAction(() => { deleteByIndexArray(mod.state.selected) })
+          return
+
           if (!args[1]) {
             // if only a 'del' command supplied, attempt to delete current selected thing
             if (!mod.state.selected.length) { _.logger.log(`select something`,_.logger.level.warn);return }
@@ -244,27 +250,67 @@ _.module.nabnak = {
 
         // success
         mod.state.selected = indexArr
-        mod.fn.doAction(mod.fn.render)
+        mod.fn.doAction(_.fn.render)
         return
       }
       function deleteByIndexArray(indexArr) {
         if (!indexArr) return
         const project = mod.data.projects[indexArr[0]]
+        if (!project) { _.logger.log(`failed to find project by index ${indexArr[0]}`,_.logger.level.warn,indexArr);return }
         let group, task
         if (indexArr.length === 1) {
-          _.logger.log(`deleting project WIP`,_.logger.level.debug)
+          // confirmation flaw: you can confirm on project then proceed to delete a group without a re-confirmation. IDGAF im 
+          // the only user atm, just needed to be noted though
+          if (!mod.deleteConfirmed) {
+            _.logger.log(`CONFIRM deletion of project '${project.name}' by typing delete command again`,_.logger.level.error)
+            mod.deleteConfirmed = true
+            return
+          } else {
+            mod.data.projects.splice(parseInt(indexArr[0]), 1)
+            mod.db.save()
+            _.logger.log(`project '${project.name}' deleted. TODO: put deleted objects in deleted array or something with TTL`)
+            mod.state.selected = []
+            mod.fn.doAction(_.fn.render)
+            mod.deleteConfirmed = null
+            return
+          }
         }
         if (indexArr.length === 2) {
           group = project.groups[indexArr[1]]
           if (!group) { _.logger.log(`failed to find group via ${indexArr[0]}-${indexArr[1]}`,_.logger.level.warn);return }
-          _.logger.log(`deleting group WIP`,_.logger.level.debug)
+          if (!mod.deleteConfirmed) {
+            _.logger.log(`CONFIRM deletion of group '${group.name}' in project '${project.name}' by typing delete command again`,_.logger.level.error)
+            mod.deleteConfirmed = true
+            return
+          } else {
+            project.groups.splice(parseInt(indexArr[1]), 1)
+            mod.db.save()
+            _.logger.log(`group '${group.name}' deleted for project '${project.name}'. TODO: put deleted objects in deleted array or something with TTL`)
+            mod.state.selected.length = 1
+            mod.fn.doAction(_.fn.render)
+            mod.deleteConfirmed = null
+            return
+          }
         }
         if (indexArr.length === 3) {
           group = project.groups[indexArr[1]]
           if (!group) { _.logger.log(`failed to find group via ${indexArr[0]}-${indexArr[1]}`,_.logger.level.warn);return }
           task = group.tasks[indexArr[2]]
           if (!task) { _.logger.log(`failed to find task via ${indexArr[0]}-${indexArr[1]}-${indexArr[2]}`,_.logger.level.warn);return }
-          _.logger.log(`deleting task WIP`,_.logger.level.debug)
+          
+          if (!mod.deleteConfirmed) {
+            _.logger.log(`CONFIRM deletion of task '${task.name}' in group '${group.name}' in project '${project.name}' by typing delete command again`,_.logger.level.error)
+            mod.deleteConfirmed = true
+            return
+          } else {
+            group.tasks.splice(parseInt(indexArr[2]), 1)
+            mod.db.save()
+            _.logger.log(`task '${task.name}' in group '${group.name}' in project '${project.name}' deleted. TODO: put deleted objects in deleted array or something with TTL`)
+            mod.state.selected.length = 2
+            mod.fn.doAction(_.fn.render)
+            mod.deleteConfirmed = null
+            return
+          }
         }
       }
     },
@@ -377,7 +423,7 @@ _.module.nabnak = {
         // if the user hits backspace on an empty cli, unselect the lowest selected entity
         // this should be page depended, so yeah
         mod.state.selected.pop()
-        mod.fn.doAction(mod.fn.render)
+        mod.fn.doAction(_.fn.render)
       }
     }
     
@@ -526,6 +572,7 @@ _.module.nabnak = {
             ...mod.schema.group,
             id: crypto.randomUUID(),
             name: 'default',
+            description: '',
             date_created: date.toISOString(),
             date_updated: date.toISOString(),
           })
@@ -550,7 +597,7 @@ _.module.nabnak = {
           mod.db.save()
           _.logger.log(`project '${project.name}' updated`)
           mod.fn.doAction(_.fn.render)
-        }
+        },
       },
     },
     group: {
@@ -841,7 +888,7 @@ _.module.nabnak = {
       // solution until more code exists
       if (!mod.state.selected.length) {
         mod.state.currentPage = mod.setting.defaultPage
-        mod.fn.doAction(mod.fn.render)
+        mod.fn.doAction(_.fn.render)
         return
       }
       const parentEl = document.querySelector(mod.setting.parentSelector)
