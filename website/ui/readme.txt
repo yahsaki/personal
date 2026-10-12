@@ -22,6 +22,8 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- description field needs to be fixed finally
+- nabnak view needs keybinding just like cli input field
 - 261010: BUG-this is most likely going to fix itself when more views are added, but currently:
   - when on the project list view
   - select any group by command 's <pid>-<gid>'

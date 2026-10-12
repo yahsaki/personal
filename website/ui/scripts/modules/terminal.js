@@ -510,7 +510,7 @@ _.module.terminal = {
         if ((field.type === 'text' || field.type === 'tags' || field.type === 'textarea') && !field.value) {
           field.value = ''
         }
-        if (field.type !== 'hidden') {
+        if (field.type !== 'hidden' && field.type !== 'textarea') {
           _.fn.createElement('span',[],`${prop}: `,formEl)
         }
         // I want some way to auto update the _.current form on change. lets do that
@@ -526,13 +526,16 @@ _.module.terminal = {
         }
         // we 'can' merge this with type:text but I aint
         if (field.type === 'textarea') {
-          _.fn.createElement('input',[
-            {name:'type',val:'textarea'},
-            {name:'rows',val:'5'},{name:'cols',val:'20'},
-            {name:'class',val:`form-${prop}`},
-            {name:'value',val:field.value},
+          _.fn.createElement('span',[
+            {name:'style',val:`display:block;`},
+          ],`${prop}: `,formEl)
+          _.fn.createElement('textarea',[
+            //{name:'type',val:'textarea'},
+            {name:'rows',val:'10'},{name:'cols',val:'30'},
+            {name:'class',val:`form-${prop} do-not-post`},
+            //{name:'value',val:field.value},
             {name:'oninput',val:`_.form.onFieldChange('${prop}')`}// works!
-          ],null,formEl)
+          ],field.value,formEl)
         }
         if (field.type === 'select') {
           // re-enabled the required=true set default logic. having everything default to priority=low kinda sucks
@@ -576,7 +579,12 @@ _.module.terminal = {
       _.fn.createElement('button',[{name:'onclick',val:'_.form.onSubmit()'}],'submit',formEl)
       formEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-          if (_.form.current) { _.module.terminal.form.onSubmit() }
+          if (_.form.current) {
+            if (document.activeElement.classList.contains('do-not-post')) {
+              return
+            }
+            _.module.terminal.form.onSubmit()
+          }
         }
       })
       // so far this is the only line I need to replace to make this its own thing(plus add more logic of course)

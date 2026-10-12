@@ -41,7 +41,8 @@ _.module.nabnak = {
       if (!mod.state.currentPage) {
         mod.state.currentPage = mod.setting.defaultPage
       }
-      _.module.nabnak.page[mod.state.currentPage]()
+      _.fn.clear(_.module.nabnak.setting.parentSelector)
+      _.module.nabnak.fn.doAction(_.module.nabnak.page[mod.state.currentPage])
     },
     handleInput: (args) => {
       const mod = _.module.nabnak
@@ -76,6 +77,7 @@ _.module.nabnak = {
         case 'clear': {
           mod.state.selected = []
           mod.state.currentPage = mod.setting.defaultPage
+          mod.db.save()
           mod.fn.doAction(_.fn.render)
         } break
         case 'c':
@@ -230,19 +232,20 @@ _.module.nabnak = {
         if (!project) {
           _.logger.log(`no project found on index ${indexArr[0]}`,_.logger.level.warn,indexArr);return
         } else {
-          mod.state.currentPage = mod.setting.projectPage
+          // 261011: disabled changing pages here
+          //mod.state.currentPage = mod.setting.projectPage
           if (!isNaN(indexArr[1])) {
             const group = project.groups[indexArr[1]]
             if (!group) {
               _.logger.log(`no group found on index ${indexArr[1]} for project '${project.name}'`,_.logger.level.warn,indexArr);return
             } else {
-              mod.state.currentPage = mod.setting.groupPage
+              //mod.state.currentPage = mod.setting.groupPage
               if (!isNaN(indexArr[2])) {
                 const task = group.tasks[indexArr[2]]
                 if (!task) {
                   _.logger.log(`no task found on index ${indexArr[2]} for group '${group.name}', project '${project.name}'`,_.logger.level.warn,indexArr);return
                 }
-                mod.state.currentPage = mod.setting.taskPage
+                //mod.state.currentPage = mod.setting.taskPage
               }
             }
           }
@@ -250,6 +253,7 @@ _.module.nabnak = {
 
         // success
         mod.state.selected = indexArr
+        mod.db.save()
         mod.fn.doAction(_.fn.render)
         return
       }
@@ -414,16 +418,34 @@ _.module.nabnak = {
       },
     },
   },
+  helper: {
+    html: {
+      buildListContentSectionItem: (args) => {
+        const parentEl = args.parentEl
+        const name = args.name
+        const value = args.value
+        const contentSectionItemContainerEl = document.createElement('div')
+        contentSectionItemContainerEl.setAttribute('class', `${name}-container`)
+        parentEl.append(contentSectionItemContainerEl)
+        const contentSectionItemEl = document.createElement('div')
+        contentSectionItemEl.setAttribute('class', name)
+        contentSectionItemContainerEl.append(contentSectionItemEl)
+        contentSectionItemEl.textContent = `${name}: ${value ?? ''  }`
+      }
+    }
+  },
   onInputKeyDown: (e) => {
     const mod = _.module.nabnak
     // high potential to collide with terminal's behaviors
     if (!e.target.value.length) {
       if (e.key === 'Backspace') {
-        
-        // if the user hits backspace on an empty cli, unselect the lowest selected entity
-        // this should be page depended, so yeah
-        mod.state.selected.pop()
-        mod.fn.doAction(_.fn.render)
+        if (mod.state.selected.length) {
+          // if the user hits backspace on an empty cli, unselect the lowest selected entity
+          // this should be page depended, so yeah
+          mod.state.selected.pop()
+          mod.db.save()
+          mod.fn.doAction(_.fn.render)
+        }
       }
     }
     
@@ -461,11 +483,12 @@ _.module.nabnak = {
   // eh, doesnt feel like it should live in state or data so here we go...
   setting: {
     name: 'nabnak', // feels dumb setting it like this. I mean the module is already named this
-    defaultPage: 'projectList',
-    projectPage: 'project',
-    groupPage: 'group',
-    taskPage: 'task',
+    defaultPage: 'list',
     kanbanPage: 'kanban',
+    // not using these pages
+    //projectPage: 'project',
+    //groupPage: 'group',
+    //taskPage: 'task',
   },
   // attempting to keep these as strings so it can be saved/restored
   // how about we keep all prop names flattened here
@@ -544,7 +567,7 @@ _.module.nabnak = {
       fields: {
         id: { type: 'hidden' },
         name: { type: 'text', required: true },
-        description: { type: 'text' },
+        description: { type: 'textarea' },
         tags: { type: 'tags' },
       },
       onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
@@ -613,7 +636,7 @@ _.module.nabnak = {
         id: { type: 'hidden' },
         project: { type: 'select', options: [], required: true },
         name: { type: 'text', required: true },
-        description: { type: 'text' },
+        description: { type: 'textarea' },
         tags: { type: 'tags' },
       },
       onCancel: (args) => { _.logger.log(`form cancelled`,_.logger.level.debug,args) },
@@ -698,7 +721,7 @@ _.module.nabnak = {
         projectId: { type: 'hidden' },
         group: { type: 'select', options: [], required: true },
         name: { type: 'text', required: true },
-        description: { type: 'text' },
+        description: { type: 'textarea' },
         tags: { type: 'tags' },
         // not using displayName yet, I simply dont care atm
         acceptanceCriteria: { type: 'textarea', displayName: 'Acceptance Criteria' },
@@ -771,28 +794,34 @@ _.module.nabnak = {
       height: 98%;
       overflow: auto;
     }
-    .project-list-page {}
-    .project-list-page .title {
+    
+
+
+
+
+    .list-page {}
+    .list-page .title {
       display: block;
       font-weight: bold;
       color: #04D9FF;
     }
-    .project-list-page .project {
+    .list-page .project {
       border: 1px solid #66FF66;
       margin: 4px;
       padding: 4px;
     }
-    .project-list-page .project .title {}
-    .project-list-page .group {
+    .list-page .project .title {}
+    .list-page .group {
       border: 1px solid yellow;
       margin: 4px;
       padding: 4px;
     }
-    .project-list-page .task {
+    .list-page .task {
       border: 1px solid red;
       margin: 4px;
       padding: 4px;
     }
+    
     .project-page {
       text-align: center;
       font-size: 20px;
@@ -819,112 +848,221 @@ _.module.nabnak = {
     kanban: () => {
       _.logger.log(`unimplemented`,_.logger.level.error)
     },
-    projectList: () => {
+    list: () => {
       const mod = _.module.nabnak
       const parentEl = document.querySelector(mod.setting.parentSelector)
-      let html = `
-      <div class="nabnak project-list-page">
-        ${renderProjects()}
-      </div>
-      `
-      parentEl.innerHTML = html
+      const containerEl = document.createElement('div')
+      containerEl.setAttribute('class', 'nabnak list-page')
+      switch (mod.state.selected.length) {
+        case 1: { containerEl.append(project(mod.data.projects[mod.state.selected[0]])) } break
+        case 2: { containerEl.append(group(mod.data.projects[mod.state.selected[0]].groups[mod.state.selected[1]])) } break
+        case 3: { containerEl.append(task(mod.data.projects[mod.state.selected[0]].groups[mod.state.selected[1]].tasks[mod.state.selected[2]])) } break
+        default: { containerEl.append(projects(mod.data.projects)) } break
+      }
+      parentEl.append(containerEl)
 
-      function renderProjects() {
-        let string = ``
-        for (let i in mod.data.projects) {
-          const project = mod.data.projects[i]
-          string += `
-          <div data-id="${project.id}" class="project">
-            <div class="title-container">
-              <div class="title">[${i}] ${project.name}: ${project.description}</div>
-            </div>
-            <div class="group-container">
-              ${renderGroups(project.groups, i)}
-            </div>
-          </div>
-          `
-        }
-        return string
-      }
-      function renderGroups(groups, projectIndex) {
-        let string = ''
-        for (let i in groups) {
-          const group = groups[i]
-          string += `
-          <div data-id="${group.id}" class="group">
-            <div class="title-container">
-              <div class="title">[${projectIndex}-${i}] ${group.name}: ${group.description}</div>
-            </div>
-            <div class="task-container">
-              ${renderTasks(group.tasks, i, projectIndex)}
-            </div>
-          </div>
-          `
-        }
-        return string
-      }
-      function renderTasks(tasks, groupIndex, projectIndex) {
-        let string = ''
-        for (let i in tasks) {
-          const task = tasks[i]
-          string += `
-          <div data-id="${task.id}" class="task">
-            <div class="title-container">
-              <div class="title">[${projectIndex}-${groupIndex}-${i}] ${task.name}</div>
-            </div>
-            <div class="content">
-              <div class="description">${task.description}</div>
-            </div>
-          </div>
-          `
-        }
-        return string
-      }
-    },
-    project: () => {
-      const mod = _.module.nabnak
-      // users(me only) have the ability to modify selected object with one keypress, so lets check if a selected project still
-      // exists on render. if not, change page to default for now. I dont like that logic living here but I cant think of a better
-      // solution until more code exists
-      if (!mod.state.selected.length) {
-        mod.state.currentPage = mod.setting.defaultPage
-        mod.fn.doAction(_.fn.render)
-        return
-      }
-      const parentEl = document.querySelector(mod.setting.parentSelector)
-      let html = `
-      <div class="nabnak project-page">
-        ${renderProject()}
-      </div>
-      `
-      parentEl.innerHTML = html
+      function projects(projects) {
+        const el = document.createElement('div')
+        el.setAttribute('class', 'projects-container')
+        for (let i in projects) {
+          const project = projects[i]
+          const projectEl = document.createElement('div')
+          projectEl.setAttribute('class', 'project')
+          el.append(projectEl)
+          const titleContainerEl = document.createElement('div')
+          titleContainerEl.setAttribute('class', 'title-container')
+          projectEl.append(titleContainerEl)
+          const titleEl = document.createElement('div')
+          titleEl.setAttribute('class', 'title')
+          titleContainerEl.append(titleEl)
+          titleEl.textContent = `[${i}] ${project.name}: ${project.description}`
 
-      function renderProject() {
-        const project = mod.data.projects[mod.state.selected[0]]
-        let string = `
-        <div class="project">
-          <div class="title-container">
-            <span class="title project-title">${project.name}</span>
-          </div>
-          <div class="project-content">
-            <div class="project-dates">
-              <div class="date-updated">
-                Updated: ${project.date_updated}
-              </div>
-              <div class="date-created">
-                Created: ${project.date_created}
-              </div>
-            </div>
-            <div class="description">
-              ${project.description}
-            </div>
-            <div class="tags">
-              <b>Tags: </b>${project.tags.join(', ')}
-            </div>
-          </div>
-        </div>
-        `
-        return string
+          const groupContainerEl = document.createElement('div')
+          groupContainerEl.setAttribute('class', 'group-container')
+          projectEl.append(groupContainerEl)
+          for (let j in project.groups) {
+            const group = project.groups[j]
+            const groupEl = document.createElement('div')
+            groupEl.setAttribute('class', 'group')
+            groupContainerEl.append(groupEl)
+            const groupTitleContainerEl = document.createElement('div')
+            groupTitleContainerEl.setAttribute('class', 'title-container')
+            groupEl.append(groupTitleContainerEl)
+            const groupTitleEl = document.createElement('div')
+            groupTitleEl.setAttribute('class', 'title')
+            groupTitleContainerEl.append(groupTitleEl)
+            groupTitleEl.textContent = `[${i}-${j}] ${group.name}: ${group.description}`
+
+            const taskContainerEl = document.createElement('div')
+            taskContainerEl.setAttribute('class', 'task-container')
+            groupEl.append(taskContainerEl)
+            for (let k in group.tasks) {
+              const task = group.tasks[k]
+              const taskEl = document.createElement('div')
+              taskEl.setAttribute('class', 'task')
+              taskContainerEl.append(taskEl)
+              const taskTitleContainerEl = document.createElement('div')
+              taskTitleContainerEl.setAttribute('class', 'title-container')
+              taskEl.append(taskTitleContainerEl)
+              const taskTitleEl = document.createElement('div')
+              taskTitleEl.setAttribute('class', 'title')
+              taskTitleContainerEl.append(taskTitleEl)
+              taskTitleEl.textContent = `[${i}-${j}-${k}] ${task.name}: ${task.desciption}`
+              const taskContentEl = document.createElement('div')
+              taskContentEl.setAttribute('class', 'content')
+              taskEl.append(taskContentEl)
+              const taskDescriptionEl = document.createElement('div')
+              taskDescriptionEl.setAttribute('class', 'description')
+              taskContentEl.append(taskDescriptionEl)
+              taskDescriptionEl.textContent = task.description
+            }
+          }
+        }
+        return el
+      }
+      function project(project) {
+        const el = document.createElement('div')
+        el.setAttribute('class', 'project-container')
+        const projectEl = document.createElement('div')
+        projectEl.setAttribute('class', 'project project-view')
+        el.append(projectEl)
+
+        const titleContainerEl = document.createElement('div')
+        titleContainerEl.setAttribute('class', 'title-container')
+        projectEl.append(titleContainerEl)
+        const titleEl = document.createElement('div')
+        titleEl.setAttribute('class', 'title')
+        titleContainerEl.append(titleEl)
+        titleEl.textContent = `${project.name}`
+
+        const projectContentContainerEl = document.createElement('div')
+        projectContentContainerEl.setAttribute('class', 'content-container')
+        projectEl.append(projectContentContainerEl)
+
+        mod.helper.html.buildListContentSectionItem({parentEl:projectContentContainerEl,name:'Tags',value:project.tags.join(', ')})
+        mod.helper.html.buildListContentSectionItem({parentEl:projectContentContainerEl,name:'Create Date',value:project.date_created})
+        mod.helper.html.buildListContentSectionItem({parentEl:projectContentContainerEl,name:'Update Date',value:project.date_updated})
+        mod.helper.html.buildListContentSectionItem({parentEl:projectContentContainerEl,name:'description',value:project.description})
+        
+        const groupContainerEl = document.createElement('div')
+        groupContainerEl.setAttribute('class', 'group-container')
+        projectEl.append(groupContainerEl)
+        for (let i in project.groups) {
+          const group = project.groups[i]
+          const groupEl = document.createElement('div')
+          groupEl.setAttribute('class', 'group')
+          groupContainerEl.append(groupEl)
+          const groupTitleContainerEl = document.createElement('div')
+          groupTitleContainerEl.setAttribute('class', 'title-container')
+          groupEl.append(groupTitleContainerEl)
+          const groupTitleEl = document.createElement('div')
+          groupTitleEl.setAttribute('class', 'title')
+          groupTitleContainerEl.append(groupTitleEl)
+          groupTitleEl.textContent = `[${i}] ${group.name}: ${group.description}`
+
+          const taskContainerEl = document.createElement('div')
+          taskContainerEl.setAttribute('class', 'task-container')
+          groupEl.append(taskContainerEl)
+          for (let j in group.tasks) {
+            const task = group.tasks[j]
+            const taskEl = document.createElement('div')
+            taskEl.setAttribute('class', 'task')
+            taskContainerEl.append(taskEl)
+            const taskTitleContainerEl = document.createElement('div')
+            taskTitleContainerEl.setAttribute('class', 'title-container')
+            taskEl.append(taskTitleContainerEl)
+            const taskTitleEl = document.createElement('div')
+            taskTitleEl.setAttribute('class', 'title')
+            taskTitleContainerEl.append(taskTitleEl)
+            taskTitleEl.textContent = `[${i}-${j}] ${task.name}: ${task.desciption}`
+            const taskContentEl = document.createElement('div')
+            taskContentEl.setAttribute('class', 'content')
+            taskEl.append(taskContentEl)
+            const taskDescriptionEl = document.createElement('div')
+            taskDescriptionEl.setAttribute('class', 'description')
+            taskContentEl.append(taskDescriptionEl)
+            taskDescriptionEl.textContent = task.description
+          }
+        }
+        return el
+      }
+      function group(group) {
+        const el = document.createElement('div')
+        el.setAttribute('class', 'group-container')
+        const groupEl = document.createElement('div')
+        groupEl.setAttribute('class', 'group')
+        el.append(groupEl)
+
+        const titleContainerEl = document.createElement('div')
+        titleContainerEl.setAttribute('class', 'title-container')
+        groupEl.append(titleContainerEl)
+        const titleEl = document.createElement('div')
+        titleEl.setAttribute('class', 'title')
+        titleContainerEl.append(titleEl)
+        titleEl.textContent = `${group.name}`
+
+        const groupContentContainerEl = document.createElement('div')
+        groupContentContainerEl.setAttribute('class', 'content-container')
+        groupEl.append(groupContentContainerEl)
+
+        mod.helper.html.buildListContentSectionItem({parentEl:groupContentContainerEl,name:'Tags',value:group.tags.join(', ')})
+        mod.helper.html.buildListContentSectionItem({parentEl:groupContentContainerEl,name:'Create Date',value:group.date_created})
+        mod.helper.html.buildListContentSectionItem({parentEl:groupContentContainerEl,name:'Update Date',value:group.date_updated})
+        mod.helper.html.buildListContentSectionItem({parentEl:groupContentContainerEl,name:'description',value:group.description})
+
+        const taskContainerEl = document.createElement('div')
+        taskContainerEl.setAttribute('class', 'task-container')
+        groupEl.append(taskContainerEl)
+        for (let i in group.tasks) {
+          const task = group.tasks[i]
+          const taskEl = document.createElement('div')
+          taskEl.setAttribute('class', 'task')
+          taskContainerEl.append(taskEl)
+          const taskTitleContainerEl = document.createElement('div')
+          taskTitleContainerEl.setAttribute('class', 'title-container')
+          taskEl.append(taskTitleContainerEl)
+          const taskTitleEl = document.createElement('div')
+          taskTitleEl.setAttribute('class', 'title')
+          taskTitleContainerEl.append(taskTitleEl)
+          taskTitleEl.textContent = `[${i}] ${task.name}: ${task.desciption}`
+          const taskContentEl = document.createElement('div')
+          taskContentEl.setAttribute('class', 'content')
+          taskEl.append(taskContentEl)
+          const taskDescriptionEl = document.createElement('div')
+          taskDescriptionEl.setAttribute('class', 'description')
+          taskContentEl.append(taskDescriptionEl)
+          taskDescriptionEl.textContent = task.description
+        }
+        return el
+      }
+      function task(task) {
+        const el = document.createElement('div')
+        el.setAttribute('class', 'task-container')
+        const taskEl = document.createElement('div')
+        taskEl.setAttribute('class', 'task')
+        el.append(taskEl)
+
+        const titleContainerEl = document.createElement('div')
+        titleContainerEl.setAttribute('class', 'title-container')
+        taskEl.append(titleContainerEl)
+        const titleEl = document.createElement('div')
+        titleEl.setAttribute('class', 'title')
+        titleContainerEl.append(titleEl)
+        titleEl.textContent = `${task.name}`
+
+        const taskontentContainerEl = document.createElement('div')
+        taskontentContainerEl.setAttribute('class', 'content-container')
+        taskEl.append(taskontentContainerEl)
+
+        mod.helper.html.buildListContentSectionItem({parentEl:taskontentContainerEl,name:'Tags',value:task.tags.join(', ')})
+        mod.helper.html.buildListContentSectionItem({parentEl:taskontentContainerEl,name:'Status',value:task.status})
+        mod.helper.html.buildListContentSectionItem({parentEl:taskontentContainerEl,name:'Priority',value:task.priority})
+        mod.helper.html.buildListContentSectionItem({parentEl:taskontentContainerEl,name:'Create Date',value:task.date_created})
+        mod.helper.html.buildListContentSectionItem({parentEl:taskontentContainerEl,name:'Update Date',value:task.date_updated})
+        mod.helper.html.buildListContentSectionItem({parentEl:taskontentContainerEl,name:'description',value:task.description})
+        mod.helper.html.buildListContentSectionItem({parentEl:taskontentContainerEl,name:'acceptanceCriteria',value:task.acceptanceCriteria})
+
+        return el
       }
     },
     group: () => {},
