@@ -425,12 +425,18 @@ _.module.nabnak = {
         const name = args.name
         const value = args.value
         const contentSectionItemContainerEl = document.createElement('div')
-        contentSectionItemContainerEl.setAttribute('class', `${name}-container`)
+        contentSectionItemContainerEl.setAttribute('class', `content-item-container`)
         parentEl.append(contentSectionItemContainerEl)
-        const contentSectionItemEl = document.createElement('div')
-        contentSectionItemEl.setAttribute('class', name)
-        contentSectionItemContainerEl.append(contentSectionItemEl)
-        contentSectionItemEl.textContent = `${name}: ${value ?? ''  }`
+
+        const contentSectionLabelEl = document.createElement('div')
+        contentSectionLabelEl.setAttribute('class', 'content-item-label')
+        contentSectionItemContainerEl.append(contentSectionLabelEl)
+        contentSectionLabelEl.textContent = `${name}`
+
+        const contentSectionValueEl = document.createElement('div')
+        contentSectionValueEl.setAttribute('class', 'content-item-value')
+        contentSectionItemContainerEl.append(contentSectionValueEl)
+        contentSectionValueEl.textContent = `${ value ?? '' }`
       }
     }
   },
@@ -794,16 +800,20 @@ _.module.nabnak = {
       height: 98%;
       overflow: auto;
     }
-    
-
-
-
 
     .list-page {}
     .list-page .title {
       display: block;
       font-weight: bold;
       color: #04D9FF;
+    }
+    .list-page .main-title {
+      font-size: 30px;
+    }
+    .list-page .single-line {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .list-page .project {
       border: 1px solid #66FF66;
@@ -822,24 +832,16 @@ _.module.nabnak = {
       padding: 4px;
     }
     
-    .project-page {
-      text-align: center;
-      font-size: 20px;
-    }
-    .project-page .project-title {
-      display: block;
-      font-size: 24px;
-      font-weight: bold;
-    }
-    .project-page .project-dates {
+    .list-page .content-item-container {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 8fr;
     }
-    .project-page .description {
-      padding: 10px;
+    .list-page .content-item-container .content-item-label {
+      font-weight: bold;
+      text-align: center;
     }
-    .project-page .tags {
-      padding: 10px;
+    .list-page .content-item-container .content-item-value {
+      white-space: pre-wrap;
     }
     `
     document.head.append(style)
@@ -873,7 +875,7 @@ _.module.nabnak = {
           titleContainerEl.setAttribute('class', 'title-container')
           projectEl.append(titleContainerEl)
           const titleEl = document.createElement('div')
-          titleEl.setAttribute('class', 'title')
+          titleEl.setAttribute('class', 'title single-line')
           titleContainerEl.append(titleEl)
           titleEl.textContent = `[${i}] ${project.name}: ${project.description}`
 
@@ -889,7 +891,7 @@ _.module.nabnak = {
             groupTitleContainerEl.setAttribute('class', 'title-container')
             groupEl.append(groupTitleContainerEl)
             const groupTitleEl = document.createElement('div')
-            groupTitleEl.setAttribute('class', 'title')
+            groupTitleEl.setAttribute('class', 'title single-line')
             groupTitleContainerEl.append(groupTitleEl)
             groupTitleEl.textContent = `[${i}-${j}] ${group.name}: ${group.description}`
 
@@ -905,7 +907,7 @@ _.module.nabnak = {
               taskTitleContainerEl.setAttribute('class', 'title-container')
               taskEl.append(taskTitleContainerEl)
               const taskTitleEl = document.createElement('div')
-              taskTitleEl.setAttribute('class', 'title')
+              taskTitleEl.setAttribute('class', 'title single-line')
               taskTitleContainerEl.append(taskTitleEl)
               taskTitleEl.textContent = `[${i}-${j}-${k}] ${task.name}: ${task.desciption}`
               const taskContentEl = document.createElement('div')
@@ -928,7 +930,7 @@ _.module.nabnak = {
         el.append(projectEl)
 
         const titleContainerEl = document.createElement('div')
-        titleContainerEl.setAttribute('class', 'title-container')
+        titleContainerEl.setAttribute('class', 'title-container main-title')
         projectEl.append(titleContainerEl)
         const titleEl = document.createElement('div')
         titleEl.setAttribute('class', 'title')
@@ -956,7 +958,7 @@ _.module.nabnak = {
           groupTitleContainerEl.setAttribute('class', 'title-container')
           groupEl.append(groupTitleContainerEl)
           const groupTitleEl = document.createElement('div')
-          groupTitleEl.setAttribute('class', 'title')
+          groupTitleEl.setAttribute('class', 'title single-line')
           groupTitleContainerEl.append(groupTitleEl)
           groupTitleEl.textContent = `[${i}] ${group.name}: ${group.description}`
 
@@ -972,7 +974,7 @@ _.module.nabnak = {
             taskTitleContainerEl.setAttribute('class', 'title-container')
             taskEl.append(taskTitleContainerEl)
             const taskTitleEl = document.createElement('div')
-            taskTitleEl.setAttribute('class', 'title')
+            taskTitleEl.setAttribute('class', 'title single-line')
             taskTitleContainerEl.append(taskTitleEl)
             taskTitleEl.textContent = `[${i}-${j}] ${task.name}: ${task.desciption}`
             const taskContentEl = document.createElement('div')
@@ -994,7 +996,7 @@ _.module.nabnak = {
         el.append(groupEl)
 
         const titleContainerEl = document.createElement('div')
-        titleContainerEl.setAttribute('class', 'title-container')
+        titleContainerEl.setAttribute('class', 'title-container main-title')
         groupEl.append(titleContainerEl)
         const titleEl = document.createElement('div')
         titleEl.setAttribute('class', 'title')
@@ -1022,7 +1024,7 @@ _.module.nabnak = {
           taskTitleContainerEl.setAttribute('class', 'title-container')
           taskEl.append(taskTitleContainerEl)
           const taskTitleEl = document.createElement('div')
-          taskTitleEl.setAttribute('class', 'title')
+          taskTitleEl.setAttribute('class', 'title single-line')
           taskTitleContainerEl.append(taskTitleEl)
           taskTitleEl.textContent = `[${i}] ${task.name}: ${task.desciption}`
           const taskContentEl = document.createElement('div')
@@ -1043,7 +1045,7 @@ _.module.nabnak = {
         el.append(taskEl)
 
         const titleContainerEl = document.createElement('div')
-        titleContainerEl.setAttribute('class', 'title-container')
+        titleContainerEl.setAttribute('class', 'title-container main-title')
         taskEl.append(titleContainerEl)
         const titleEl = document.createElement('div')
         titleEl.setAttribute('class', 'title')
