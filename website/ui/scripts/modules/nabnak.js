@@ -52,6 +52,30 @@ _.module.nabnak = {
         return
       }
       switch (args[0]) {
+        case 'v':
+        case 'view': {
+          // for the time being this depends on a second arg
+          if (!args[1]) { _.logger.log(`specify view([k]anban, [l]ist)`,_.logger.level.warn);return }
+          switch (args[1]) {
+            case 'l':
+            case 'list': {
+              if (mod.state.currentPage === mod.setting.listPage) { return }
+              mod.state.currentPage = mod.setting.listPage
+              mod.db.save()
+              mod.fn.doAction(_.fn.render)
+            } break
+            case 'k':
+            case 'kanban': {
+              if (mod.state.currentPage === mod.setting.kanbanPage) { return }
+              mod.state.currentPage = mod.setting.kanbanPage
+              mod.db.save()
+              mod.fn.doAction(_.fn.render)
+            } break
+            default: {
+              _.logger.log(`view arg '${args[1]}' unsupported`,_.logger.level.warn);return
+            } break
+          }
+        } break
         case 'del':
         case 'delete': {
           // only supporting deleting by currently selected thing for a bit. current confirmation implementation depends on
@@ -416,6 +440,50 @@ _.module.nabnak = {
           onCancel: mod.form.onCancel,
         })
       },
+    },
+    squishify: () => {
+      // repackage projects/groups/tasks with current index(kanban all projects view needs this)
+      const mod = _.module.nabnak
+      const projects = []
+      for (let i in mod.data.projects) {
+        const project = mod.data.projects[i]
+        const squishedProject = {
+          id: project.id,
+          index: i,
+          name: project.name,
+          description: project.description,
+          groups: []
+        }
+        for (let j in project.groups) {
+          const group = project.groups[j]
+          const squishedGroup = {
+            id: group.id,
+            index: j,
+            projectIndex: i,
+            projectName: project.name,
+            name: group.name,
+            description: group.description,
+            tasks: []
+          }
+          squishedProject.groups.push(squishedGroup)
+          for (let k in group.tasks) {
+            const task = group.tasks[k]
+            const squishedTask = {
+              id: task.id,
+              index: k,
+              groupIndex: j,
+              groupName: group.name, // not sure if necessary
+              projectIndex: i,
+              projectName: project.name,
+              name: task.name,
+              description: task.description,
+              status: task.status
+            }
+            squishedGroup.tasks.push(squishedTask)
+          }
+        }
+      }
+      return projects
     },
   },
   helper: {
@@ -803,7 +871,11 @@ _.module.nabnak = {
       height: 98%;
       overflow: auto;
     }
-
+    .nabnak .single-line {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .list-page {}
     .list-page .title {
       display: block;
@@ -813,11 +885,7 @@ _.module.nabnak = {
     .list-page .main-title {
       font-size: 30px;
     }
-    .list-page .single-line {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .list-page .single-line {}
     .list-page .project {
       border: 1px solid #66FF66;
       margin: 16px;
@@ -870,12 +938,98 @@ _.module.nabnak = {
       color: green;
     } 
     
+    .kanban-page {
+      display: grid;
+      grid-template-columns: 1fr 8fr;
+    }
+    .kanban-page .col-0 {
+      border-right: 1px solid #66FF66;
+      overflow-x: hidden;
+      height: inherit;
+    }
+    .kanban-page .col-0 .projects-container {
+      height: 50%;
+    }
+    .kanban-page .col-0 .groups-container {
+      height: 50%;
+    }
+    .kanban-page .col-1 .tasks-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      height: inherit;
+    }
+    .kanban-page .col-1 .task-col {
+      border: 1px solid black;
+      overflow-y: auto;
+    }
+    .kanban-page .col-1 .task {
+      border: 1px solid white;
+      margin: 6px;
+    }
+    .kanban-page .col-1 .task .description {
+      
+    }
     `
     document.head.append(style)
   },
   page: {
     kanban: () => {
-      _.logger.log(`unimplemented`,_.logger.level.error)
+      const mod = _.module.nabnak
+      const squishedProjects = mod.fn.squishify()
+      const parentEl = document.querySelector(mod.setting.parentSelector)
+      const containerEl = document.createElement('div')
+      containerEl.setAttribute('class', 'nabnak kanban-page')
+      projects(squishedProjects)
+      parentEl.append(containerEl)
+
+      function projects(projects) {
+        console.log('projects', projects)
+        containerEl.innerHTML = `
+        <div class="col-0">
+          <div class="projects-container">
+          </div>
+          <div class="groups-container">
+          </div>
+        </div>
+        <div class="col-1">
+          <div class="header-container">
+            <h1>ALL PROJECTS</h1>
+          </div>
+          <div class="content-container">
+            
+            <div class="tasks-container">
+              <div class="task-col todo-col">
+                <h1>TODO</h1>
+                <div class="task-list">
+                  <div class="task">
+                    <p>created: 2026-10-20</p>
+                    <p class="tags">tags: happy,sad,butt</p>
+                    <p class="name">name: Do Things Fast and Proper and CHEAP!</p>
+                    <p class="description single-line">desc: app the things all the things all the things app the things all the things all the things app the things all the things all the things app the things all the things all the things</p>
+                  </div>
+                </div>
+              </div>
+              <div class="task-col inprogress-col">
+                <h1>In Progress</h1>
+                <div class="task-list">
+                  
+                </div>
+              </div>
+              <div class="task-col done-col">
+                <h1>Done</h1>
+                <div class="task-list">
+                  
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        `
+      }
+      function project(project) {}
+      function group(group) {}
+      function task(task) {}
     },
     list: () => {
       const mod = _.module.nabnak

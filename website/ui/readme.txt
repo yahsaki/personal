@@ -22,6 +22,8 @@ questions:
   too... but thats a later thing. I think we can make this a single file
 
 todo:
+- at least on nabnak kanban page, make tags a button that when selected, filter to only tasks with that tag for the selected
+  view criteria(spur of the moment idea)
 - description field needs to be fixed finally
 - nabnak view needs keybinding just like cli input field
 - 261010: BUG-this is most likely going to fix itself when more views are added, but currently:
@@ -168,6 +170,10 @@ completed:
 - design how base, views and tools interact with each other
 
 notes/ideas:
+- 261020: our select methodology is based off of indexes. once we implement sorting, changing the index of a parent item
+  you are accessing will change what you are viewing entirely. in order for that not to be completely crazy, we would have
+  to limit what the user(only me) gets to change depending on view, IE, if you are viewing p0-g0-t0, you should not be able
+  to change the project's sort, only the task's sort for p0-g0, if this makes any sense lol.
 - workspaces. local is its own workspace, remote could be a different workspace. keeping things up to date between all participants
   is the only thing I can think of being a pain(easy fix)
 - 261006: nabnak is quickly approaching one thousands LoC. as it grows, it could be a good idea to split it into multiple plugins
