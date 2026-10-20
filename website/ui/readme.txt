@@ -52,7 +52,6 @@ todo:
       lastFocusedElement = event.target; 
     }, true); 
     ```
-- descriptions should support line breaks, no need for rich text(it prolly already supports this)
 - support images in nabnak
 - homepage should show tasks in an overdue -> soon overdue kinda format. put some flashies on it
 - save deleted objects to its own array. give them a TTL. no need to expose a view for them for now
@@ -64,7 +63,6 @@ todo:
 - I swear I wrote this somewhere(nabnak cant come soon enough). 
   implement key combo to scroll current view. up/down arrow in cli iterates through command history
 - need way to move tasks between groups
-- need delete support
 - filter bleeping posts that contain 'Sponsored and written by' in the body(this text occurs at the end of the article)
 - listen for enter key in form to trigger submit
 - iframe proxy. falls under authenticated tools
@@ -133,6 +131,8 @@ todo:
 
 
 completed:
+- 261010: need delete support
+- 261012: descriptions should support line breaks, no need for rich text(it prolly already supports this)
 - need a way, or pattern to refocus on terminal input after many actions 
 - foreverago: bug: form values arent clearing even though they are created dynamically every time
 - 261007: select task buggy as hell. not knowing whether its in the proj array or group arr is causing disarray in onTaskUpdateClick

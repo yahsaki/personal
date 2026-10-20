@@ -584,7 +584,7 @@ _.module.nabnak = {
         create: (args) => {
           const mod = _.module.nabnak
           _.logger.log(`form submitted`,_.logger.level.debug,args)
-          const project = {...mod.schema.project}
+          const project = structuredClone(mod.schema.project)
           const date = new Date()
           project.id = crypto.randomUUID()
           project.name = args.name.value
@@ -597,16 +597,16 @@ _.module.nabnak = {
           project.date_updated = date.toISOString()
           // hackish. TODO: some shared fn should be creating this group
           // we could create a field for group name, default it to 'default'
-          project.groups.push({
-            ...mod.schema.group,
-            id: crypto.randomUUID(),
-            name: 'default',
-            description: '',
-            date_created: date.toISOString(),
-            date_updated: date.toISOString(),
-          })
+          console.log('mod schema', mod.schema)
+          const group = structuredClone(mod.schema.group)
+          group.id = crypto.randomUUID()
+          group.name = 'default'
+          group.description = ''
+          group.date_created = date.toISOString()
+          group.date_updated = date.toISOString()
+          project.groups.push(group)
           mod.data.projects.push(project)
-          _.logger.log(`project '${project.name}' created`)
+          _.logger.log(`project '${project.name}' created`,_.logger.level.info,project)
           mod.db.save()
           mod.fn.doAction(_.fn.render)
         },
@@ -654,7 +654,7 @@ _.module.nabnak = {
           if (!project) {
             _.logger.log(`failed to find project by id '${args.project.value}'`,_.logger.level.warn);return
           }
-          const group = {...mod.schema.group}
+          const group = structuredClone(mod.schema.group)
           const date = new Date()
           group.id = crypto.randomUUID()
           group.name = args.name.value
@@ -699,6 +699,9 @@ _.module.nabnak = {
         // not going to support this at this time SO a project MUST be selected for create task to work
         const mod = _.module.nabnak
         fields.status.options = Object.keys(mod.schema.enum.status)
+        if (!fields.status.value) {
+          fields.status.value = fields.status.options[0]
+        }
         fields.priority.options = Object.keys(mod.schema.enum.priority)
         const project = mod.data.projects[mod.state.selected[0]]
         if (!project) {
@@ -743,7 +746,7 @@ _.module.nabnak = {
           if (!project) { _.logger.log(`projectId '${args.projectId.value}' doesnt match any projects`,_.logger.level.warn,args);return }
           const group = project.groups.find(x => x.id === args.group.value)
           if (!group) { _.logger.log(`groupId '${args.group.value}' doesnt match any groups for project '${project.name}'`,_.logger.level.warn,args);return }
-          const task = {...mod.schema.task}
+          const task = structuredClone(mod.schema.task)
           const date = new Date()
           task.id = crypto.randomUUID() // we technically dont need these yet which is crazy
           task.name = args.name.value
@@ -843,6 +846,12 @@ _.module.nabnak = {
     .list-page .content-item-container .content-item-value {
       white-space: pre-wrap;
     }
+    .list-page .task-name {
+
+    }
+    .list-page .task-description {
+      color: #FAFFFB;
+    }
     `
     document.head.append(style)
   },
@@ -909,7 +918,7 @@ _.module.nabnak = {
               const taskTitleEl = document.createElement('div')
               taskTitleEl.setAttribute('class', 'title single-line')
               taskTitleContainerEl.append(taskTitleEl)
-              taskTitleEl.textContent = `[${i}-${j}-${k}] ${task.name}: ${task.desciption}`
+              taskTitleEl.textContent = `[${i}-${j}-${k}]-[${task.status}] ${task.name}`
               const taskContentEl = document.createElement('div')
               taskContentEl.setAttribute('class', 'content')
               taskEl.append(taskContentEl)
@@ -976,7 +985,7 @@ _.module.nabnak = {
             const taskTitleEl = document.createElement('div')
             taskTitleEl.setAttribute('class', 'title single-line')
             taskTitleContainerEl.append(taskTitleEl)
-            taskTitleEl.textContent = `[${i}-${j}] ${task.name}: ${task.desciption}`
+            taskTitleEl.textContent = `[${i}-${j}]-[${task.status}] ${task.name}`
             const taskContentEl = document.createElement('div')
             taskContentEl.setAttribute('class', 'content')
             taskEl.append(taskContentEl)
@@ -1026,7 +1035,7 @@ _.module.nabnak = {
           const taskTitleEl = document.createElement('div')
           taskTitleEl.setAttribute('class', 'title single-line')
           taskTitleContainerEl.append(taskTitleEl)
-          taskTitleEl.textContent = `[${i}] ${task.name}: ${task.desciption}`
+          taskTitleEl.textContent = `[${i}]-[${task.status}] ${task.name}`
           const taskContentEl = document.createElement('div')
           taskContentEl.setAttribute('class', 'content')
           taskEl.append(taskContentEl)
