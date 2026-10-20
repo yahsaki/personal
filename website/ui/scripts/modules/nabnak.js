@@ -820,7 +820,7 @@ _.module.nabnak = {
     }
     .list-page .project {
       border: 1px solid #66FF66;
-      margin: 4px;
+      margin: 16px;
       padding: 4px;
     }
     .list-page .project .title {}
@@ -852,6 +852,24 @@ _.module.nabnak = {
     .list-page .task-description {
       color: #FAFFFB;
     }
+
+    .list-page .task-summary-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    .list-page .task-summary-container .todo-container {
+      font-weight: bold;
+      color: red;
+    }
+    .list-page .task-summary-container .inprogress-container {
+      font-weight: bold;
+      color: yellow;
+    }
+    .list-page .task-summary-container .done-container {
+      font-weight: bold;
+      color: green;
+    } 
+    
     `
     document.head.append(style)
   },
@@ -904,6 +922,30 @@ _.module.nabnak = {
             groupTitleContainerEl.append(groupTitleEl)
             groupTitleEl.textContent = `[${i}-${j}] ${group.name}: ${group.description}`
 
+            const todo = group.tasks.filter(x => x.status === 'todo')
+            const inprogress = group.tasks.filter(x => x.status === 'inprogress')
+            const done = group.tasks.filter(x => x.status === 'done')
+
+            const taskContainerEl = document.createElement('div')
+            taskContainerEl.setAttribute('class', 'task-summary-container')
+            groupEl.append(taskContainerEl)
+            taskContainerEl.innerHTML = `
+            <div class="summary-container todo-container">
+              <div class="summary-title">TODO</div>
+              <div class="summary-value">${todo.length}</div>
+            </div>
+            <div class="summary-container inprogress-container">
+              <div class="summary-title">IN PROGRESS</div>
+              <div class="summary-value">${inprogress.length}</div>
+            </div>
+            <div class="summary-container done-container">
+              <div class="summary-title">DONE</div>
+              <div class="summary-value">${done.length}</div>
+            </div>
+            `
+
+            // keeping this here because I would like to be able to switch between these view options
+            /*
             const taskContainerEl = document.createElement('div')
             taskContainerEl.setAttribute('class', 'task-container')
             groupEl.append(taskContainerEl)
@@ -927,6 +969,7 @@ _.module.nabnak = {
               taskContentEl.append(taskDescriptionEl)
               taskDescriptionEl.textContent = task.description
             }
+            */
           }
         }
         return el
