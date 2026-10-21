@@ -1125,7 +1125,7 @@ _.module.nabnak = {
                 </div>
                 `
               } else {
-                for (let k in filteredTasks) {
+                for (let k in filteredTasks.reverse()) {
                   const task = filteredTasks[k]
                   string += `
                   <div class="task">

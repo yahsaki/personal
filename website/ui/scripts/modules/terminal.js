@@ -244,6 +244,11 @@ _.module.terminal = {
       const currentMode = _.module.terminal.data.currentMode
       const module = _.module.terminal.data.module
       
+      // overriding export/import commands
+      if (input === 'import' || input === 'export') {
+        return _.module.terminal.fn.command[input]({})
+      }
+
       if (currentMode !== module.terminal.name) {
         // we dont need command split out in this situation. need that command parsing
         let args = input.split(' ')
