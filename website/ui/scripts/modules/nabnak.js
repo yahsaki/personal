@@ -454,6 +454,7 @@ _.module.nabnak = {
           description: project.description,
           groups: []
         }
+        projects.push(squishedProject)
         for (let j in project.groups) {
           const group = project.groups[j]
           const squishedGroup = {
@@ -470,14 +471,18 @@ _.module.nabnak = {
             const task = group.tasks[k]
             const squishedTask = {
               id: task.id,
-              index: k,
+              index: parseInt(k), // this is the only one im referencing in logic so far
               groupIndex: j,
               groupName: group.name, // not sure if necessary
               projectIndex: i,
               projectName: project.name,
               name: task.name,
               description: task.description,
-              status: task.status
+              status: task.status,
+              tags: task.tags,
+              date_created: task.date_created,
+              date_updated: task.date_updated,
+              acceptanceCriteria: task.acceptanceCriteria,
             }
             squishedGroup.tasks.push(squishedTask)
           }
@@ -876,6 +881,10 @@ _.module.nabnak = {
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .selected {
+      font-weight: bold;
+      text-decoration: underline;
+    }
     .list-page {}
     .list-page .title {
       display: block;
@@ -948,11 +957,11 @@ _.module.nabnak = {
       height: inherit;
     }
     .kanban-page .col-0 .projects-container {
-      height: 50%;
+      border-bottom: 1px solid #66FF66;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
     }
-    .kanban-page .col-0 .groups-container {
-      height: 50%;
-    }
+    .kanban-page .col-0 .groups-container {}
     .kanban-page .col-1 .tasks-container {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -963,11 +972,26 @@ _.module.nabnak = {
       overflow-y: auto;
     }
     .kanban-page .col-1 .task {
-      border: 1px solid white;
+      border: 1px solid #66FF66;
       margin: 6px;
+    }
+    .kanban-page .col-1 .selected-task {
+      background-color: #373c42;
     }
     .kanban-page .col-1 .task .description {
       
+    }
+    .kanban-page .col-1 .task .project-name {
+      font-weight: bold;
+      color: #66FF66;
+    }
+    .kanban-page .col-1 .task .group-name {
+      font-weight: bold;
+      color: yellow;
+    }
+    .kanban-page .col-1 .task .task-name {
+      font-weight: bold;
+      color: red;
     }
     `
     document.head.append(style)
@@ -987,38 +1011,34 @@ _.module.nabnak = {
         containerEl.innerHTML = `
         <div class="col-0">
           <div class="projects-container">
+            ${renderProjectList()}
           </div>
           <div class="groups-container">
+            ${renderGroupList()}
           </div>
         </div>
         <div class="col-1">
-          <div class="header-container">
+          <div style="display:none;" class="header-container">
             <h1>ALL PROJECTS</h1>
           </div>
           <div class="content-container">
-            
             <div class="tasks-container">
               <div class="task-col todo-col">
                 <h1>TODO</h1>
                 <div class="task-list">
-                  <div class="task">
-                    <p>created: 2026-10-20</p>
-                    <p class="tags">tags: happy,sad,butt</p>
-                    <p class="name">name: Do Things Fast and Proper and CHEAP!</p>
-                    <p class="description single-line">desc: app the things all the things all the things app the things all the things all the things app the things all the things all the things app the things all the things all the things</p>
-                  </div>
+                  ${renderTasks(mod.schema.enum.status.todo)}
                 </div>
               </div>
               <div class="task-col inprogress-col">
                 <h1>In Progress</h1>
                 <div class="task-list">
-                  
+                  ${renderTasks(mod.schema.enum.status.inprogress)}
                 </div>
               </div>
               <div class="task-col done-col">
                 <h1>Done</h1>
                 <div class="task-list">
-                  
+                  ${renderTasks(mod.schema.enum.status.done)}
                 </div>
               </div>
             </div>
@@ -1026,6 +1046,106 @@ _.module.nabnak = {
           </div>
         </div>
         `
+
+        function renderProjectList() {
+          let string = ''
+          const selectedProject = squishedProjects[mod.state.selected[0]]
+          for (let i in squishedProjects) {
+            const project = squishedProjects[i]
+            let selected = ''
+            if (selectedProject && selectedProject.id === project.id) { selected = 'selected' }
+            string += `
+            <div class="project single-line ${selected}">[${project.index}]${project.name}</div>
+            `
+          }
+          return string
+        }
+        // not happy with the duplicate code in this fn at all but I wasted too many cycles trying to prevent it
+        function renderGroupList() {
+          let string = ''
+          // not sure if squished projects in same order as projects
+          const selectedProject = squishedProjects[mod.state.selected[0]]
+          if (selectedProject) {
+            for (let i in selectedProject.groups) {
+              const group = selectedProject.groups[i]
+              let selected = ''
+              let selectedGroup = selectedProject.groups[mod.state.selected[1]]
+              // I know I can use '?.' operator but I dont want to
+              if (selectedGroup && selectedGroup.id === group.id) { selected = 'selected' }
+              string += `
+              <div class="group single-line ${selected}">[${group.projectIndex}-${group.index}]${group.name}</div>
+              `
+            }
+          } else {
+            for (let i in squishedProjects) {
+              const project = squishedProjects[i]
+              for (let i in project.groups) {
+                const group = project.groups[i]
+                string += `
+                <div class="group single-line">[${group.projectIndex}-${group.index}]${group.name}</div>
+                `
+              }
+            }
+          }
+          return string
+        }
+        function renderTasks(status) {
+          let string = ''
+          let projectList = squishedProjects
+          const selectedProject = squishedProjects[mod.state.selected[0]]
+          if (selectedProject) { projectList = [selectedProject] }
+          for (let i in projectList) {
+            const project = projectList[i]
+            let groupList = project.groups
+            const selectedGroup = project.groups[mod.state.selected[1]]
+            if (selectedGroup) { groupList = [selectedGroup] }
+            for (let j in groupList) {
+              const group = groupList[j]
+              const filteredTasks = group.tasks.filter(x => x.status === status)
+              const selectedTask = filteredTasks.find(x => x.index === mod.state.selected[2])
+              // not a fan of this behavior but having the view jump around when selecting a task is offputting
+              // crap, this only clears the row for this status type which is definitely a bug but im going to  treat
+              // it as a feature for now
+              // I really should be popping a dialog in this sitation no joke
+              if (selectedTask) {
+                string += `
+                <div class="task selected-task">
+                  <p>
+                    [${selectedTask.projectIndex}-${selectedTask.groupIndex}-${selectedTask.index}]
+                    <span class="project-name">${selectedTask.projectName}</span>
+                    <span class="group-name">${selectedTask.groupName}</span>
+                  </p>
+                  <p class="name task-name">${selectedTask.name}</p>
+                  <p>created: <b>${selectedTask.date_created.substring(0,10)}</b>, updated: <b>${selectedTask.date_updated.substring(0,10)}</b></p>
+                  <p class="tags">tags: ${selectedTask.tags}</p>
+                  <p>description:</p>
+                  <p class="description">${selectedTask.description}</p>
+                  <p>acceptance criteria:</p>
+                  <p class="acceptanceCriteria">${selectedTask.acceptanceCriteria}</p>
+                </div>
+                `
+              } else {
+                for (let k in filteredTasks) {
+                  const task = filteredTasks[k]
+                  string += `
+                  <div class="task">
+                    <p>
+                      [${task.projectIndex}-${task.groupIndex}-${task.index}]
+                      <span class="project-name">${task.projectName}</span>
+                      <span class="group-name">${task.groupName}</span>
+                    </p>
+                    <p class="name task-name single-line">${task.name}</p>
+                    <p>created: <b>${task.date_created.substring(0,10)}</b></p>
+                    <p class="tags">tags: ${task.tags}</p>
+                    <p class="description single-line">${task.description}</p>
+                  </div>
+                  `
+                }
+              }
+            }
+          }
+          return string
+        }
       }
       function project(project) {}
       function group(group) {}
