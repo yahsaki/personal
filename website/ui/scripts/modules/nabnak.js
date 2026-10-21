@@ -52,6 +52,33 @@ _.module.nabnak = {
         return
       }
       switch (args[0]) {
+        case 'mv':
+        case 'move': {
+          // accepts two arguments. initially, we only support moving task(arg1) to group(arg2). only supports moving tasks
+          // between groups in the same project for now.
+          // a project->group must be selected, we will ignore the selected task for now
+          // clear selected task on successful move due to change in index
+          if (isNaN(mod.state.selected[1])) { _.logger.log(`select a project->group first`,_.logger.level.warn);return }
+          const taskIndex = parseInt(args[1])
+          if (isNaN(taskIndex)) { _.logger.log(`specify task index as first arg`,_.logger.level.warn);return }
+          const targetGroupIndex = parseInt(args[2])
+          if (isNaN(targetGroupIndex)) { _.logger.log(`specify group index as second arg`,_.logger.level.warn);return }
+          const project = mod.data.projects[mod.state.selected[0]]
+          if (!project) { _.logger.log(`failed to find project at ${mod.state.selected[0]}`,_.logger.level.warn);return }
+          const targetGroup = project.groups[targetGroupIndex]
+          if (!targetGroup) { _.logger.log(`failed to find target group at ${targetGroupIndex}`,_.logger.level.warn);return }
+          const sourceGroup = project.groups[mod.state.selected[1]]
+          if (!sourceGroup) { _.logger.log(`failed to find source group at ${mod.state.selected[1]}`,_.logger.level.warn);return }
+          if (!sourceGroup.tasks[taskIndex]) { _.logger.log(`failed to find task in source group at ${taskIndex}`,_.logger.level.warn);return }
+          // all verified, good to go
+          // remove task from source
+          const task = sourceGroup.tasks.splice(taskIndex, 1)[0]
+          // add task to target group
+          targetGroup.tasks.push(task)
+          _.logger.log(`task '${task.name}' removed from group '${sourceGroup.name}' and added to group '${targetGroup.name}'`)
+          mod.state.selected.length = 2
+          mod.fn.doAction(() => {mod.db.save();_.fn.render()})
+        } break
         case 'v':
         case 'view': {
           // for the time being this depends on a second arg
@@ -539,7 +566,7 @@ _.module.nabnak = {
       const stateString = JSON.stringify(mod.state)
       _.storage.save(`${mod.setting.name}-data`, dataString)
       _.storage.save(`${mod.setting.name}-state`, stateString)
-      _.logger.log('nabnak.db.save: data saved')
+      _.logger.log('nabnak.db.save: data saved',_.logger.level.debug)
     },
     get: () => {
       const mod = _.module.nabnak
