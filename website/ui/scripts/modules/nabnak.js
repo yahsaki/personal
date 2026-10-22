@@ -1005,8 +1005,9 @@ _.module.nabnak = {
     .kanban-page .col-1 .selected-task {
       background-color: #373c42;
     }
-    .kanban-page .col-1 .task .description {
-      
+    .kanban-page .col-1 .selected-task .description,
+    .kanban-page .col-1 .selected-task .acceptanceCriteria {
+      white-space: pre-wrap;
     }
     .kanban-page .col-1 .task .project-name {
       font-weight: bold;
