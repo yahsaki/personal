@@ -1,13 +1,47 @@
+class NabnakDal {
+  #projects = []
+  #projectMap = {}
+  #groups = []
+  #groupMap = {}
+  #tasks = []
+  #taskMap = {}
+  constructor(args) {
+    console.log('initialize', this.#schema.project)
+  }
+  hydrate(projects) {
 
-//parse(`u 0 tags '' description ''`)
-parse(`sel 0-0-0`)
-function parse() {
-  const arr = []
+  }
+  dehydrate() {
+    // convert flattened objects back into tree structure
+    return []
+  }
+  api = {
+    project: {
 
-}
-function parseReverse() {
-  const arr = []
-  for (let i = string.length-1; i >= 0; i--) {
-    
+    },
+    group: {},
+    task: {}
+  }
+  #schema = {
+    enum: {
+      status: {
+        todo: 'todo',
+        inprogress: 'inprogress',
+        done: 'done'
+      },
+      priority: {
+        low: 'low',
+        medium: 'medium',
+        high: 'high',
+      }
+    },
+    project: {
+      id: null,
+      slug: 'slugged'
+    }
   }
 }
+
+;(async () => {
+  const dal = new NabnakDal()
+})()
