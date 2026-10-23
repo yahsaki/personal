@@ -34,6 +34,9 @@ class NabnakDal {
   constructor(args) {
     console.log('initialize', this.#schema.board)
   }
+  get boards() { return structuredClone(this.#boards) }
+  get groups() { return structuredClone(this.#groups) }
+  get tasks() { return structuredClone(this.#tasks) }
   get data() {
     return {
       boards: structuredClone(this.#boards),
@@ -68,7 +71,7 @@ class NabnakDal {
     board: {
       create: (args) => {
         const errors = []
-        const board = args.board
+        const board = args?.board
         if (!board) {errors.push('board property missing');return errors}
         if (!board.name?.length) { errors.push('name required')}
         if (!board.slug?.length) { errors.push('slug required')}
@@ -80,7 +83,7 @@ class NabnakDal {
         if (existing) {errors.push(`board with slug '${board.slug.toUpperCase()}' already exists`)}
 
         if (board.slug.length !== 4) { errors.push('we kinda require slugs to be 4 chars...') }
-        if (board.tags?.length) {
+        if (Array.isArray(board.tags)) {//if (board.tags?.length) {
           const dupes = this.helper.checkForTagDupes(board.tags)
           if (dupes.length) {
             errors.push(`duplicate tags '${dupes.join(', ')}' found`)
@@ -91,13 +94,13 @@ class NabnakDal {
       },
       update: (args) => {
         const errors = []
-        const board = args.board
+        const board = args?.board
         if (!board) {errors.push('board property missing');return errors}
         const existing = this.#boards.find(x => x.id === board.id)
         if (!existing) { errors.push(`board not found by id '${board.id}'`);return errors}
 
         // not updating name/slug
-        if (board.tags?.length) {
+        if (Array.isArray(board.tags)) {
           const dupes = this.helper.checkForTagDupes(board.tags)
           if (dupes.length) {
             errors.push(`duplicate tags '${dupes.join(', ')}' found`)
@@ -132,6 +135,7 @@ class NabnakDal {
         }
         return errors
       },
+      // TODO: prevent delete if orphans will occur
       delete: (args) => {
         const errors = []
         if (!args.id?.length) { errors.push('arg id required');return errors}
@@ -140,11 +144,48 @@ class NabnakDal {
         if (!existing) { errors.push(`board with id '${args.id}' not found`)}
 
         return errors
-      }
+      },
+      group: {
+        create: (args) => {
+          // I dont believe this is necessary yet
+        }
+      },
     },
     group: {
       create: (args) => {
+        const errors = []
+        const group = args?.group
+        if (!group) {errors.push('group property missing');return errors}
 
+        if (!group.name?.length) { errors.push('name required') }
+        if (~group.name.indexOf('_')) { errors.push('group names cant have underscores. honestly shouldnt have much of any special chars')}
+        // TODO: limit group names to just a-zA-Z0-9 and dash? honestly I dont want dashes either
+
+        let existing = this.#groups.find(x => x.id === group.name.toLowerCase())
+        if (existing) {errors.push(`group with name/id '${group.name.toLowerCase()}' already exists`)}
+
+        if (Array.isArray(group.tags)) {
+          const dupes = this.helper.checkForTagDupes(group.tags)
+          if (dupes.length) {
+            errors.push(`duplicate tags '${dupes.join(', ')}' found`)
+          }
+        }
+
+        switch (args?.parentType) {
+          case this.#schema.enum.group.parentType.board: {
+            const board = this.#boards.find(x => x.id === group.parentId)
+            if (!board) { errors.push(`failed to find parent board by id '${group.parentId}'(parentId)`)}
+          } break
+          case this.#schema.enum.group.parentType.group: {
+            const group = this.#groups.find(x => x.id === group.parentId)
+            if (!group) { errors.push(`failed to find parent group by id '${group.parentId}'(parentId)`)}
+          } break
+          default: {
+            errors.push(`invalid parentType '${args?.parentType}'`)
+          } break
+        }
+
+        return errors
       },
       update: (args) => {
 
@@ -175,6 +216,9 @@ class NabnakDal {
         board.description = args.board.description
         board.date_created = date.toISOString()
         board.date_updated = date.toISOString()
+        if (Array.isArray(args.board.tags)) {
+          board.tags = args.board.tags
+        }
 
         this.#boards.push(board)
         _.logger.log(`board '${board.name}' created`,null,board)
@@ -221,7 +265,14 @@ class NabnakDal {
         remove: (args) => {},
       },
       group: {
-        create: (args) => {},
+        // in order to prevent sending 'parentType' enum to callers, callers will execute
+        // 'board.group.create()' instead of 'group.create()' to associate the group to
+        // the board, and 'group.group.create()' to associate the group to another group
+        create: (args) => {
+          if (!args) { args = {} }
+          args.parentType = this.#schema.enum.group.parentType.board
+          return this.api.group.create(args)
+        },
         remove: (args) => {},
         shift: (args) => {},
       },
@@ -239,7 +290,27 @@ class NabnakDal {
     group: {
       get: (args) => {},
       create: (args) => {
+        const errors = this.validate.group.create(args)
+        if (errors.length) { return {success:false,errors} }
 
+        const date = new Date()
+        const group = structuredClone(this.#schema.group)
+        group.id = args.group.name
+        group.name = args.group.name
+        group.parentId = args.group.parentId
+        group.parentType = args.parentType
+        group.description = args.group.description
+        if (Array.isArray(args.group.tags)) {
+          group.tags = args.group.tags
+        }
+        group.date_created = date.toISOString()
+        group.date_updated = date.toISOString()
+
+        // we have no safeguards from accidentally pushing a group to the board array and
+        // vice versa. mp2g is nice in that class inheritance covers this fully
+        this.#groups.push(group)
+        _.logger.log(`group '${group.name}' created`,null,group)
+        return {success:true,data:{id:group.id}}
       },
       update: (args) => {},
       delete: (args) => {},
@@ -254,7 +325,11 @@ class NabnakDal {
         shift: (args) => {},
       },
       group: {
-        create: (args) => {},
+        create: (args) => {
+          if (!args) { args = {} }
+          args.parentType = this.#schema.enum.group.parentType.group
+          return this.api.group.create(args)
+        },
         remove: (args) => {},
         shift: (args) => {},
       },
@@ -328,8 +403,7 @@ class NabnakDal {
     },
     // will not be created by default when a board is created
     group: {
-      // im not sure of the value splitting id/guidId here but ill continue
-      // the pattern anyway
+      // keeping same pattern as board for id/name
       id: null,
       name: null,
       //guidId: null,
@@ -340,8 +414,13 @@ class NabnakDal {
       tags: [],
       date_created: null,
       date_updated: null,
-      date_due: null, // only applies to certain group types
-      date_completed: null, // only applies to certain group types
+      // only applies to certain group types. I wanted to make these tags but date tags 
+      // seem funky, more like tags that are driven by data values that can change by
+      // accident seems... funky. IE, doing 'type-bug' seems... cleaner than doing
+      // 'field-date_due-270101'. putting that in a metadata prop is much more proper.
+      date_due: null,
+      // only applies to certain group types
+      date_completed: null,
       groups: [],
       // instead of updating the task, we can save info to the shallow copy for
       // the task to this group
@@ -352,7 +431,11 @@ class NabnakDal {
       // will most likely default with todo,inprogress and done columns
       // how about we shift columns with command like 'mv col <index> <<'
       // meaning move col two spaces to the left
-      columns: []
+      columns: [
+        {name:'todo',items:[]},
+        {name:'inprogress',items:[]},
+        {name:'done',items:[]},
+      ],
     },
     // cannot be moved between boards
     // not supporting subtasks. if you want to subtask, just group the tasks
@@ -366,6 +449,7 @@ class NabnakDal {
       //guidId: null, // seriously no need here
       boardId: null, // definitely keeping this association
       name: null,
+      // for now im putting repro steps and acceptance criteria in description
       description: null,
       tags: [],
       date_created: null,
@@ -436,6 +520,14 @@ function dalStuff() {
   if (!deleteBoardRes.success) { console.log('failed to delete board', deleteBoardRes);return}
 
   console.log('boards after delete', dal.api.board.get())
+
+  // groups
+  const createGroupForBoardRes = dal.api.board.group.create({ group: {
+    name: 'nabnak',
+    parentId: createBoardRes.data.id,
+  }})
+  if (!createGroupForBoardRes.success) {console.log('failed to create group for board',createGroupForBoardRes);return}
+
 }
 
 
