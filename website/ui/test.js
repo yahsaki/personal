@@ -34,9 +34,19 @@ class NabnakDal {
   constructor(args) {
     console.log('initialize', this.#schema.board)
   }
+  get data() {
+    return {
+      boards: structuredClone(this.#boards),
+      groups: structuredClone(this.#groups),
+      tasks: structuredClone(this.#tasks),
+    }
+  }
+  // lets see if I can get away with not using this outside of this class
+  //get parentType() { return this.#schema.group.parentType }
+
   // [de]hydrate dead for now; will save data as is to localstorage
-  hydrate(projects) {}
-  dehydrate() {}
+  //hydrate(projects) {}
+  //dehydrate() {}
   helper = {
     checkForTagDupes: (tags = []) => {
       const duplicates = []
@@ -47,16 +57,19 @@ class NabnakDal {
         checkedTags.push(tags[i])
       }
       return duplicates
+    },
+    valdateTags: (tags = []) => {
+      // TODO: will need to actually validate format of tags since the tool is heavily
+      // tag driven. tags like 'type--epic' would be invalid, one extra dash.
+      // duplicate checks will be moved here
     }
   }
   validate = {
     board: {
-      // essentially complete, I dont see any more changes needed to this
       create: (args) => {
-        _.logger.log('validating board create', null, args)
         const errors = []
         const board = args.board
-        if (!board) {errors.push('.board property missing');return errors}
+        if (!board) {errors.push('board property missing');return errors}
         if (!board.name?.length) { errors.push('name required')}
         if (!board.slug?.length) { errors.push('slug required')}
         if (errors.length) { return errors }
@@ -66,6 +79,7 @@ class NabnakDal {
         existing = this.#boards.find(x => x.slug === board.slug.toUpperCase())
         if (existing) {errors.push(`board with slug '${board.slug.toUpperCase()}' already exists`)}
 
+        if (board.slug.length !== 4) { errors.push('we kinda require slugs to be 4 chars...') }
         if (board.tags?.length) {
           const dupes = this.helper.checkForTagDupes(board.tags)
           if (dupes.length) {
@@ -74,7 +88,67 @@ class NabnakDal {
         }
 
         return errors
+      },
+      update: (args) => {
+        const errors = []
+        const board = args.board
+        if (!board) {errors.push('board property missing');return errors}
+        const existing = this.#boards.find(x => x.id === board.id)
+        if (!existing) { errors.push(`board not found by id '${board.id}'`);return errors}
+
+        // not updating name/slug
+        if (board.tags?.length) {
+          const dupes = this.helper.checkForTagDupes(board.tags)
+          if (dupes.length) {
+            errors.push(`duplicate tags '${dupes.join(', ')}' found`)
+          }
+        }
+        return errors
+      },
+      shift: (args) => {
+        const errors = []
+        if (!args.id?.length) { errors.push('arg id required');return errors}
+
+        if (this.#boards.length > 2) {errors.push('need at least 2 items in array to shift')}
+        const itemIndex = this.#boards.findIndex(x => x.id === args.id)
+        if (itemIndex < 0) { errors.push(`board with id '${args.id}' not found`)}
+
+        if (isNaN(args.location)) { errors.push(`location should be int`) }
+        if (args.location === 0) { errors.push(`location should be less than or greater than 0`) }
+        
+        //const targetIndex = itemIndex + args.location
+        // we dont care about overshooting but trying to move the first/last object to the
+        // same position is not allowed
+        if (args.location < 0) {
+          // moving left
+          if (itemIndex === 0) {
+            errors.push(`attempted to move zeroeth item left`)
+          }
+        } else {
+          // moving right
+          if (itemIndex+1 === this.#boards.length) {
+            errors.push(`attempted to move the last object right`)
+          }
+        }
+        return errors
+      },
+      delete: (args) => {
+        const errors = []
+        if (!args.id?.length) { errors.push('arg id required');return errors}
+
+        const existing = this.#boards.find(x => x.id === args.id)
+        if (!existing) { errors.push(`board with id '${args.id}' not found`)}
+
+        return errors
       }
+    },
+    group: {
+      create: (args) => {
+
+      },
+      update: (args) => {
+
+      },
     }
   }
   api = {
@@ -82,6 +156,12 @@ class NabnakDal {
       // this get will be more involved than class get fns
       get: (args) => {
         // I legit have no idea how queries will work yet, simply too soon
+        if (args?.id) {
+          const board = this.#boards.find(x => x.id === args.id)
+          if (board) { return {board:structuredClone(board)} }
+          else return {}
+        }
+        return {boards:structuredClone(this.#boards)}
       },
       create: (args) => {
         const errors = this.validate.board.create(args)
@@ -102,15 +182,46 @@ class NabnakDal {
       },
       update: (args) => {
         // not allowing name/slug(and id of course) updates for now
+        // I wanted this to be RFC 6902 compliant but leaving it as 'everything goes' for now
+        const errors = this.validate.board.update(args)
+        if (errors.length) { return {success:false,errors} }
+
+        const board = this.#boards.find(x => x.id === args.board.id)
+        board.description = args.board.description
+        board.tags = args.board.tags
+        board.date_updated = new Date().toISOString()
+
+        _.logger.log(`board '${board.name}' updated`)
+        return {success:true}
       },
-      delete: (args) => {},
-      shift: (args) => {},
+      delete: (args) => {
+        const errors = this.validate.board.delete(args)
+        if (errors.length) { return {success:false,errors} }
+
+        const index = this.#boards.findIndex(x => x.id === args.id)
+        const deletedBoard = this.#boards.splice(index, 1)[0]
+
+        _.logger.log(`board '${deletedBoard.name}' deleted`)
+        return {success:true}
+      },
+      shift: (args) => {
+        const errors = this.validate.board.shift(args)
+        if (errors.length) { return {success:false,errors} }
+
+        const itemIndex = this.#boards.findIndex(x => x.id === args.id)
+        const targetIndex = itemIndex + args.location
+        const item = this.#boards.splice(itemIndex, 1)[0]
+        this.#boards.splice(targetIndex, 0, item)
+
+        _.logger.log(`successfully shifted board ${args.location < 0 ? 'left' : 'right'}`)
+        return {success:true}
+      },
       tag: {
         add: (args) => {},
         remove: (args) => {},
       },
       group: {
-        add: (args) => {},
+        create: (args) => {},
         remove: (args) => {},
         shift: (args) => {},
       },
@@ -127,7 +238,9 @@ class NabnakDal {
     },
     group: {
       get: (args) => {},
-      create: (args) => {},
+      create: (args) => {
+
+      },
       update: (args) => {},
       delete: (args) => {},
       shift: (args) => {},
@@ -141,7 +254,7 @@ class NabnakDal {
         shift: (args) => {},
       },
       group: {
-        add: (args) => {},
+        create: (args) => {},
         remove: (args) => {},
         shift: (args) => {},
       },
@@ -185,6 +298,13 @@ class NabnakDal {
         low: 'low',
         medium: 'medium',
         high: 'high',
+      },
+      // crap im adding one but its valid: not used for UI rendering
+      group: {
+        parentType: {
+          board: 'board',
+          group: 'group',
+        }
       }
     },
     board: {
@@ -267,11 +387,86 @@ class NabnakDal {
 }
 
 ;(async () => {
+  //testShifting()
+  dalStuff()
+})()
+
+function dalStuff() {
   const dal = new NabnakDal()
   const createBoardRes = dal.api.board.create({ board: {
     name: 'yahbsite',
     slug: 'YAHZ',
   }})
   if (!createBoardRes.success) { console.log('create board fail', createBoardRes);return }
+  console.log('data', dal.data)
+  const getAllBoardsRes = dal.api.board.get()
+  console.log('all boards', getAllBoardsRes)
+  const getBoardRes = dal.api.board.get({id:createBoardRes.data.id})
+  console.log('get board res', getBoardRes)
 
-})()
+  const updateBoardRes = dal.api.board.update({ board: {
+      ...getBoardRes.board,
+      description: 'updated description',
+      // prev nabnak sent a string at this point. we could prolly send .tagString instead
+      // to be completely clear
+      tags: ['tag0','butt'],
+    }
+  })
+  if (!updateBoardRes.success) { console.log('failed to update board',updateBoardRes);return }
+
+  console.log('board after update', dal.api.board.get({id:createBoardRes.data.id}))
+
+  //const createGroupForBoardRes = dal.api.group.create
+
+  const createDeleteBoardRes = dal.api.board.create({ board: {
+    name: 'deleteMe',
+    slug: 'DLME',
+  }})
+  if (!createDeleteBoardRes.success) { console.log('failed to create project for delete',createDeleteBoardRes);return }
+
+  const shiftDeleteBoardRes = dal.api.board.shift({
+    id: createDeleteBoardRes.data.id,
+    location: -1,
+  })
+  if (!shiftDeleteBoardRes.success) { console.log('failed to shift delete board', shiftDeleteBoardRes);return }
+
+  console.log('boards after shifting', dal.api.board.get())
+
+  const deleteBoardRes = dal.api.board.delete({id: createDeleteBoardRes.data.id})
+  if (!deleteBoardRes.success) { console.log('failed to delete board', deleteBoardRes);return}
+
+  console.log('boards after delete', dal.api.board.get())
+}
+
+
+
+function testShifting() {
+  //shift([{id: 0},{id: 1}], 1, -1)
+  // this needs to fail gracefully. just tried to move the right most object right
+  //shift([{id: 0},{id: 1}], 1, 1)
+  shift([{id: 0},{id: 1},{id: 2},{id: 3}], 3, -1)
+  
+  function shift(arr, id, location) {
+    let itemIndex = arr.findIndex(x => x.id === id) // lets assume we always find for now
+    console.log('args', arr, id, location)
+    console.log('item index', itemIndex)
+    let targetIndex = itemIndex + location
+    console.log('target index', targetIndex)
+
+    if (location < 0) {
+      console.log('moving to the left')
+      if (targetIndex < 0) {
+        console.log('overshot, just move item to zeroeth spot')
+        targetindex = 0
+      }
+      const item = arr.splice(itemIndex, 1)[0]
+      arr.splice(targetIndex, 0, item)
+      console.log('move left operation complete', arr)
+    } else {
+      console.log('moving to the right')
+      const item = arr.splice(itemIndex, 1)[0]
+      arr.splice(targetIndex, 0, item)
+      console.log(`move right operation complete`, arr)
+    }
+  }
+}
