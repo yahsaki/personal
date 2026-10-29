@@ -32,7 +32,24 @@ class NabnakDal {
   //#taskMap = {}
   // how about #tags and #comments? tags would ignore system tags, I would think
   constructor(args) {
+    if (!args) { args = {} }
     console.log('initialize', this.#schema.board)
+    if (Object.hasOwn(args, 'debug') && args.debug === true) {
+      console.log('debug args', args)
+      // currently gating hydrate behind a debug flag
+      for (const i in args.boards) {
+        const res = this.api.board.create({board:args.boards[i]})
+        if (!res.success) { throw Error(res.errors) }
+      }
+      for (const i in args.groups) {
+        const res = this.api.group.create({group:args.groups[i],parentType:args.groups[i].parentType})
+        if (!res.success) { throw Error(res.errors) }
+      }
+      for (const i in args.tasks) {
+        const res = this.api.task.create({task:args.tasks[i]})
+        if (!res.success) { throw Error(res.errors) }
+      }
+    }
   }
   get boards() { return structuredClone(this.#boards) }
   get groups() { return structuredClone(this.#groups) }
@@ -65,7 +82,36 @@ class NabnakDal {
       // TODO: will need to actually validate format of tags since the tool is heavily
       // tag driven. tags like 'type--epic' would be invalid, one extra dash.
       // duplicate checks will be moved here
-    }
+    },
+    recursivelyUpdateAllParents: (id, type) => {
+      let reachedTheTop = false
+      const idsHit = []
+      while (!reachedTheTop) {
+        // groups must have a board as a parent... I hope
+        let obj
+        const date = new Date()
+        if (type === this.#schema.enum.group.parentType.board) {
+          if (idsHit.find(x => x === id)) { throw Error(`object '${id}'(${type}) already processed`) }
+          obj = this.#boards.find(x => x.id === id)
+          if (!obj) { throw Error(`board '${id}' does not exist`) }
+          obj.date_updated = date.toISOString()
+          idsHit.push(id)
+          reachedTheTop = true
+        } else if (type === this.#schema.enum.group.parentType.group) {
+          if (idsHit.find(x => x === id)) { throw Error(`object '${id}'(${type}) already processed`) }
+          obj = this.#groups.find(x => x.id === id)
+          if (!obj) { throw Error(`group '${id}' does not exist`) }
+          obj.date_updated = date.toISOString()
+          idsHit.push(id)
+          id = obj.parentId
+          type = obj.parentType
+        } else {
+          throw Error(`type '${type}' not supported`)
+        }
+      }
+      _.logger.log(`${idsHit.join(', ')} updated`)
+      return
+    },
   }
   validate = {
     board: {
@@ -177,8 +223,8 @@ class NabnakDal {
             if (!board) { errors.push(`failed to find parent board by id '${group.parentId}'(parentId)`)}
           } break
           case this.#schema.enum.group.parentType.group: {
-            const group = this.#groups.find(x => x.id === group.parentId)
-            if (!group) { errors.push(`failed to find parent group by id '${group.parentId}'(parentId)`)}
+            const parentGroup = this.#groups.find(x => x.id === group.parentId)
+            if (!parentGroup) { errors.push(`failed to find parent group by id '${group.parentId}'(parentId)`)}
           } break
           default: {
             errors.push(`invalid parentType '${args?.parentType}'`)
@@ -188,7 +234,39 @@ class NabnakDal {
         return errors
       },
       update: (args) => {
+        const errors = []
+        const group = args?.group
+        if (!group) { errors.push(`group property missing`);return errors}
+        const existing = this.#groups.find(x => x.id === group.id)
+        if (!existing) { errors.push(`group not found by id '${group.id}'`);return errors}
 
+        // seriously only tags and description updateable?
+        // date_due updateable but im not planning on using that soon
+        if (Array.isArray(group.tags)) {
+          const dupes = this.helper.checkForTagDupes(group.tags)
+          if (dupes.length) {
+            errors.push(`duplicate tags '${dupes.join(', ')}' found`)
+          }
+        }
+
+        // we arent requiring caller to supply parent type. we can get group before validating of course,
+        // dont care at the moment
+        /*switch (group.parentType) {
+          case this.#schema.enum.group.parentType.board: {
+            const board = this.#boards.find(x => x.id === group.parentId)
+            if (!board) { errors.push(`failed to find parent board by id '${group.parentId}'(parentId)`)}
+          } break
+          case this.#schema.enum.group.parentType.group: {
+            const parentGroup = this.#groups.find(x => x.id === group.parentId)
+            if (!parentGroup) { errors.push(`failed to find parent group by id '${parentGroup.parentId}'(parentId)`)}
+            // TODO: should probably validate all parents up the chain
+          } break
+          default: {
+            errors.push(`invalid parentType '${group.parentType}'`)
+          } break
+        }*/
+
+        return errors
       },
     }
   }
@@ -312,7 +390,21 @@ class NabnakDal {
         _.logger.log(`group '${group.name}' created`,null,group)
         return {success:true,data:{id:group.id}}
       },
-      update: (args) => {},
+      update: (args) => {
+        const errors = this.validate.group.update(args)
+        if (errors.length) { return {success:false,errors}}
+
+        const group = this.#groups.find(x => x.id === args.group.id)
+        group.description = args.group.description
+        if (Array.isArray(args.group.tags)) {
+          group.tags = args.group.tags
+        }
+        
+        group.date_updated = new Date().toISOString()
+        this.helper.recursivelyUpdateAllParents(group.parentId, group.parentType)
+        _.logger.log(`group '${group.name}' updated`,null,group)
+        return {success:true}
+      },
       delete: (args) => {},
       shift: (args) => {},
       tag: {
@@ -400,6 +492,7 @@ class NabnakDal {
       tasks: [],
       // feel more like logs in this context
       comments: [],
+      metadata: {},
     },
     // will not be created by default when a board is created
     group: {
@@ -431,11 +524,14 @@ class NabnakDal {
       // will most likely default with todo,inprogress and done columns
       // how about we shift columns with command like 'mv col <index> <<'
       // meaning move col two spaces to the left
+      // 261023: decided to keep columns in this structure at this level. will have to
+      // maintain a shallow copy of object here and in the group/tasks
       columns: [
         {name:'todo',items:[]},
         {name:'inprogress',items:[]},
         {name:'done',items:[]},
       ],
+      metadata: {},
     },
     // cannot be moved between boards
     // not supporting subtasks. if you want to subtask, just group the tasks
@@ -457,6 +553,7 @@ class NabnakDal {
       date_due: null,
       date_completed: null,
       comments: [],
+      metadata: {},
     },
     comment: {
       id: null,
@@ -473,8 +570,26 @@ class NabnakDal {
 ;(async () => {
   //testShifting()
   dalStuff()
+  //recursivelyUpdateObjects()
 })()
 
+function recursivelyUpdateObjects() {
+  const dal = new NabnakDal({
+    debug: true,
+    boards: [
+      { id: 'yahbsite', name: 'yahbsite', slug: 'yahz'}
+    ],
+    groups: [
+      { id: 'nabnak', name: 'nabnak', parentId: 'yahbsite', parentType: 'board' },
+      { id: 'future-tasks', name: 'future-tasks', parentId: 'nabnak', parentType: 'group' },
+      { id: 'ideas', name: 'ideas', parentId: 'nabnak', parentType: 'group' },
+      { id: 'active', name: 'active', parentId: 'nabnak', parentType: 'group' },
+      { id: 'batch-0', name: 'batch-0', parentId: 'active', parentType: 'group' },
+    ],
+  })
+  console.log('data', dal.data)
+  dal.helper.recursivelyUpdateAllParents('batch-0', 'group')
+}
 function dalStuff() {
   const dal = new NabnakDal()
   const createBoardRes = dal.api.board.create({ board: {
@@ -527,6 +642,14 @@ function dalStuff() {
     parentId: createBoardRes.data.id,
   }})
   if (!createGroupForBoardRes.success) {console.log('failed to create group for board',createGroupForBoardRes);return}
+
+  const updateGroupForBoardRes = dal.api.group.update({ group : {
+    id: 'nabnak',
+    description: 'description updated'
+  }})
+  if (!updateGroupForBoardRes.success) { console.log(`failed to update board group '${createGroupForBoardRes.data.id}'`, updateGroupForBoardRes.errors);return}
+  console.log('updated group', dal.data.groups.find(x => x.id === createGroupForBoardRes.data.id))
+
 
 }
 
