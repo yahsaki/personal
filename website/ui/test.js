@@ -37,6 +37,7 @@ class NabnakDal {
     if (Object.hasOwn(args, 'debug') && args.debug === true) {
       console.log('debug args', args)
       // currently gating hydrate behind a debug flag
+      // THIS WILL LOSE TONS OF DATA AS IS. JUST BLINDLY AND DANGEROUSLY SET THE PRIVATE VARS INSTEAD
       for (const i in args.boards) {
         const res = this.api.board.create({board:args.boards[i]})
         if (!res.success) { throw Error(res.errors) }
@@ -49,6 +50,13 @@ class NabnakDal {
         const res = this.api.task.create({task:args.tasks[i]})
         if (!res.success) { throw Error(res.errors) }
       }
+    }
+    if (Object.hasOwn(args, 'hydrate') && args.hydrate === true) {
+      this.#boards = args.boards
+      this.#groups = args.groups
+      this.#tasks = args.tasks
+      // nabnak state would have to be stored elsewhere, makes no sense in the dal. I dont know
+      // how state is working at the moment anyway
     }
   }
   get boards() { return structuredClone(this.#boards) }
@@ -158,7 +166,7 @@ class NabnakDal {
         const errors = []
         if (!args.id?.length) { errors.push('arg id required');return errors}
 
-        if (this.#boards.length > 2) {errors.push('need at least 2 items in array to shift')}
+        if (this.#boards.length < 2) {errors.push('need at least 2 items in array to shift')}
         const itemIndex = this.#boards.findIndex(x => x.id === args.id)
         if (itemIndex < 0) { errors.push(`board with id '${args.id}' not found`)}
 
@@ -268,6 +276,70 @@ class NabnakDal {
 
         return errors
       },
+      shift: (args) => {
+        const errors = []
+        if (!args.id?.length) { errors.push('arg id required');return errors}
+
+        if (isNaN(args.location)) { errors.push(`location should be int`) }
+        if (args.location === 0) { errors.push(`location should be less than or greater than 0`) }
+
+        const group = this.#groups.find(x => x.id === args.id)
+        if (!group) { errors.push(`group '${args.id}' not found`)}
+
+        if (errors.length) { return errors }
+
+        let indexedGroupIndex, parent
+        if (group.parentType === this.#schema.enum.group.parentType.board) {
+          parent = this.#boards.find(x => x.id === group.parentId)
+          if (!parent) { errors.push(`board '${group.parentId}' not found`);return errors }
+          if (parent.groups.length < 2) { errors.push(`board '${parent.id}' requires at least 2 groups to shift`) }
+          indexedGroupIndex = parent.groups.findIndex(x => x.id === group.id)
+          if (indexedGroupIndex < 0) { errors.push(`group '${group.id}' exists in global array but missing in board '${parent.id}', shits broke`)}
+        } else if (group.parentType === this.#schema.enum.group.parentType.group) {
+          parent = this.#groups.find(x => x.id === group.parentId)
+          if (!parent) { errors.push(`group '${group.parentId}' not found`);return errors }
+          if (parent.groups.length < 2) { errors.push(`group '${parent.id}' requires at least 2 groups to shift`) }
+          indexedGroupIndex = parent.groups.findIndex(x => x.id === group.id)
+          if (indexedGroupIndex < 0) { errors.push(`group '${group.id}' exists in global array but missing in group '${parent.id}', shits broke`)}
+        } else {
+          errors.push(`unknown parentType '${group.parentType}'`);return errors
+        }
+
+        if (args.location < 0) {
+          // moving left
+          if (indexedGroupIndex === 0) {
+            errors.push(`attempted to move zeroeth item left`)
+          }
+        } else {
+          // moving right
+          if (indexedGroupIndex+1 === parent.groups.length) {
+            errors.push(`attempted to move the last object right`)
+          }
+        }
+
+        return errors
+      },
+      delete: (args) => {
+        const errors = []
+        if (!args.id?.length) { errors.push('arg id required');return errors}
+
+        const group = this.#groups.find(x => x.id === args.id)
+        if (!group) { errors.push(`board with id '${args.id}' not found`);return errors}
+
+        if (group.parentType === this.#schema.enum.group.parentType.board) {
+          const parent = this.#boards.find(x => x.id === group.parentId)
+          if (!parent) { errors.push(`board '${group.parentId}' not found`);return errors }
+          if (!parent.groups.find(x => x.id === group.id)) { errors.push(`failed to find shallow ref for group id '${group.id}'`) }
+        } else if (group.parentType === this.#schema.enum.group.parentType.group) {
+          const parent = this.#groups.find(x => x.id === group.parentId)
+          if (!parent) { errors.push(`group '${group.parentId}' not found`);return errors }
+          if (!parent.groups.find(x => x.id === group.id)) { errors.push(`failed to find shallow ref for group id '${group.id}'`) }
+        } else {
+          errors.push(`unknown parentType '${group.parentType}'`);return errors
+        }
+
+        return errors
+      },
     }
   }
   api = {
@@ -335,6 +407,7 @@ class NabnakDal {
         const item = this.#boards.splice(itemIndex, 1)[0]
         this.#boards.splice(targetIndex, 0, item)
 
+        item.date_updated = new Date().toISOString()
         _.logger.log(`successfully shifted board ${args.location < 0 ? 'left' : 'right'}`)
         return {success:true}
       },
@@ -387,6 +460,16 @@ class NabnakDal {
         // we have no safeguards from accidentally pushing a group to the board array and
         // vice versa. mp2g is nice in that class inheritance covers this fully
         this.#groups.push(group)
+
+        // currently the only reason we are adding a shallow ref to .groups prop is for positioning
+        if (group.parentType === this.#schema.enum.group.parentType.board) {
+          const parent = this.#boards.find(x => x.id === group.parentId)
+          parent.groups.push({id:group.id})
+        } else if (group.parentType === this.#schema.enum.group.parentType.group) {
+          const parent = this.#groups.find(x => x.id === group.parentId)
+          parent.groups.push({id:group.id})
+        }
+        this.helper.recursivelyUpdateAllParents(group.parentId, group.parentType)
         _.logger.log(`group '${group.name}' created`,null,group)
         return {success:true,data:{id:group.id}}
       },
@@ -405,8 +488,52 @@ class NabnakDal {
         _.logger.log(`group '${group.name}' updated`,null,group)
         return {success:true}
       },
-      delete: (args) => {},
-      shift: (args) => {},
+      delete: (args) => {
+        const errors = this.validate.group.delete(args)
+        if (errors.length) { return {success:false,errors} }
+
+        const index = this.#groups.findIndex(x => x.id === args.id)
+        const deletedGroup = this.#groups.splice(index, 1)[0]
+
+        // I know I had ideas of groups/tasks having references in other locations. doesnt work that way
+        // atm but keep note
+        if (deletedGroup.parentType === this.#schema.enum.group.parentType.board) {
+          const parent = this.#boards.find(x => x.id === deletedGroup.parentId)
+          const shallowRefIndex = parent.groups.findIndex(x => x.id === args.id)
+          parent.groups.splice(shallowRefIndex, 1)[0]
+        } else if (deletedGroup.parentType === this.#schema.enum.group.parentType.group) {
+          const parent = this.#groups.find(x => x.id === deletedGroup.parentId)
+          shallowRefIndex = parent.groups.findIndex(x => x.id === args.id)
+          parent.groups.splice(shallowRefIndex, 1)[0]
+        }
+
+        this.helper.recursivelyUpdateAllParents(deletedGroup.parentId, deletedGroup.parentType)
+        _.logger.log(`group '${deletedGroup.name}' deleted`)
+        return {success:true}
+      },
+      shift: (args) => {
+        const errors = this.validate.group.shift(args)
+        if (errors.length) { return {success:false,errors}}
+
+        const group = this.#groups.find(x => x.id === args.id)
+        let itemIndex, parent
+        if (group.parentType === this.#schema.enum.group.parentType.board) {
+          parent = this.#boards.find(x => x.id === group.parentId)
+          itemIndex = parent.groups.findIndex(x => x.id === args.id)
+        } else if (group.parentType === this.#schema.enum.group.parentType.group) {
+          parent = this.#groups.find(x => x.id === group.parentId)
+          itemIndex = parent.groups.findIndex(x => x.id === args.id)
+        }
+        const targetIndex = itemIndex + args.location
+        const item = parent.groups.splice(itemIndex, 1)[0]
+        parent.groups.splice(targetIndex, 0, item)
+        
+        group.date_udpated = new Date().toISOString()
+        this.helper.recursivelyUpdateAllParents(group.parentId, group.parentType)
+        _.logger.log(`group '${group.name}' updated(shifted)`,null,group)
+
+        return {success:true}
+      },
       tag: {
         add: (args) => {},
         remove: (args) => {},
@@ -649,8 +776,25 @@ function dalStuff() {
   }})
   if (!updateGroupForBoardRes.success) { console.log(`failed to update board group '${createGroupForBoardRes.data.id}'`, updateGroupForBoardRes.errors);return}
   console.log('updated group', dal.data.groups.find(x => x.id === createGroupForBoardRes.data.id))
+  console.log('board', JSON.stringify(dal.data,' ',2))
 
+  const createGroupForShiftAndDeleteRes = dal.api.board.group.create({ group: {
+    name: 'group-delete',
+    parentId: createBoardRes.data.id,
+  }})
+  if (!createGroupForShiftAndDeleteRes.success) {console.log('failed to create shift/delete group for board',createGroupForShiftAndDeleteRes);return}
 
+  const shiftGroupForShiftAndDeleteRes = dal.api.group.shift({
+    id: createGroupForShiftAndDeleteRes.data.id,
+    location: -1,
+  })
+  if (!shiftGroupForShiftAndDeleteRes.success) { console.log('failed to shift delete group',shiftGroupForShiftAndDeleteRes);return}
+  console.log('data after shift', JSON.stringify(dal.data,' ',2))
+  // need to shift groups in groups on top of groups in a board
+
+  const deleteGroupRes = dal.api.group.delete({ id: createGroupForShiftAndDeleteRes.data.id, })
+  if (!deleteGroupRes.success) { console.log('failed to delete group', deleteGroupRes);return}
+  console.log(`board after delete, '${createGroupForShiftAndDeleteRes.data.id}' should be gone fully`, JSON.stringify(dal.data,' ',2))
 }
 
 
