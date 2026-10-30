@@ -88,7 +88,7 @@ class NabnakDal {
     },
     valdateTags: (tags = []) => {
       // TODO: will need to actually validate format of tags since the tool is heavily
-      // tag driven. tags like 'type--epic' would be invalid, one extra dash.
+      // tag driven. tags like 'type--epic' would be invalid due to the one extra dash.
       // duplicate checks will be moved here
     },
     recursivelyUpdateAllParents: (id, type) => {
@@ -119,6 +119,20 @@ class NabnakDal {
       }
       _.logger.log(`${idsHit.join(', ')} updated`)
       return
+    },
+    // walks a group's parents up to its board and returns the board id. returns null if
+    // the chain is broken(unknown parent, cycle, etc)
+    boardIdForGroup: (id) => {
+      const idsHit = []
+      let group = this.#groups.find(x => x.id === id)
+      if (!group) { return null }
+      while (group.parentType === this.#schema.enum.group.parentType.group) {
+        if (idsHit.includes(group.id)) { return null }
+        idsHit.push(group.id)
+        group = this.#groups.find(x => x.id === group.parentId)
+        if (!group) { return null }
+      }
+      return group.parentId
     },
   }
   validate = {
@@ -198,6 +212,39 @@ class NabnakDal {
         if (!existing) { errors.push(`board with id '${args.id}' not found`)}
 
         return errors
+      },
+      task: {
+        add: (args) => {
+          const errors = []
+          if (!args?.boardId?.length) { errors.push('arg boardId required');return errors }
+          if (!args?.taskId?.length) { errors.push('arg taskId required');return errors }
+
+          const board = this.#boards.find(x => x.id === args.boardId)
+          if (!board) { errors.push(`board with id '${args.boardId}' not found`);return errors }
+
+          const task = this.#tasks.find(x => x.id === args.taskId)
+          if (!task) { errors.push(`task with id '${args.taskId}' not found`);return errors }
+
+          // tasks cannot be moved between boards(see schema.task comment)
+          if (task.boardId !== board.id) {
+            errors.push(`task '${task.id}' belongs to board '${task.boardId}', not '${board.id}'`)
+          }
+          return errors
+        },
+        remove: (args) => {
+          const errors = []
+          if (!args?.boardId?.length) { errors.push('arg boardId required');return errors }
+          if (!args?.taskId?.length) { errors.push('arg taskId required');return errors }
+
+          const board = this.#boards.find(x => x.id === args.boardId)
+          if (!board) { errors.push(`board with id '${args.boardId}' not found`);return errors }
+
+          if (!this.#tasks.find(x => x.id === args.taskId)) { errors.push(`task with id '${args.taskId}' not found`);return errors }
+          if (!board.tasks.find(x => x.id === args.taskId)) {
+            errors.push(`failed to find shallow ref for task id '${args.taskId}' in board '${board.id}'`)
+          }
+          return errors
+        },
       },
       group: {
         create: (args) => {
@@ -340,6 +387,219 @@ class NabnakDal {
 
         return errors
       },
+      task: {
+        add: (args) => {
+          const errors = []
+          if (!args?.groupId?.length) { errors.push('arg groupId required');return errors }
+          if (!args?.taskId?.length) { errors.push('arg taskId required');return errors }
+
+          const group = this.#groups.find(x => x.id === args.groupId)
+          if (!group) { errors.push(`group with id '${args.groupId}' not found`);return errors }
+
+          const task = this.#tasks.find(x => x.id === args.taskId)
+          if (!task) { errors.push(`task with id '${args.taskId}' not found`);return errors }
+
+          // the group has to live on the same board as the task
+          const groupBoardId = this.helper.boardIdForGroup(group.id)
+          if (!groupBoardId) {
+            errors.push(`failed to resolve board for group '${group.id}'`)
+          } else if (groupBoardId !== task.boardId) {
+            errors.push(`group '${group.id}' belongs to board '${groupBoardId}', not '${task.boardId}'`)
+          }
+
+          const column = args.column ?? 'todo'
+          if (!group.columns.find(x => x.name === column)) {
+            errors.push(`column '${column}' not found in group '${group.id}'`)
+          }
+
+          if (group.tasks.find(x => x.id === task.id)) {
+            errors.push(`task '${task.id}' already belongs to group '${group.id}'`)
+          }
+
+          return errors
+        },
+        remove: (args) => {
+          const errors = []
+          if (!args?.groupId?.length) { errors.push('arg groupId required');return errors }
+          if (!args?.taskId?.length) { errors.push('arg taskId required');return errors }
+
+          const group = this.#groups.find(x => x.id === args.groupId)
+          if (!group) { errors.push(`group with id '${args.groupId}' not found`);return errors }
+          if (!this.#tasks.find(x => x.id === args.taskId)) { errors.push(`task with id '${args.taskId}' not found`);return errors }
+          if (!group.tasks.find(x => x.id === args.taskId)) {
+            errors.push(`failed to find shallow ref for task id '${args.taskId}' in group '${group.id}'`)
+          }
+          return errors
+        },
+        shift: (args) => {
+          const errors = []
+          if (!args?.groupId?.length) { errors.push('arg groupId required');return errors }
+          if (!args?.taskId?.length) { errors.push('arg taskId required');return errors }
+
+          if (isNaN(args.location)) { errors.push(`location should be int`) }
+          if (args.location === 0) { errors.push(`location should be less than or greater than 0`) }
+
+          const group = this.#groups.find(x => x.id === args.groupId)
+          if (!group) { errors.push(`group with id '${args.groupId}' not found`);return errors }
+          const task = this.#tasks.find(x => x.id === args.taskId)
+          if (!task) { errors.push(`task with id '${args.taskId}' not found`);return errors }
+          if (!group.tasks.find(x => x.id === task.id)) { errors.push(`task '${task.id}' doesnt belong to group '${group.id}'`);return errors }
+
+          if (errors.length) { return errors }
+
+          // tasks are ordered inside the column they currently sit in
+          const column = group.columns.find(c => c.items.find(x => x.id === task.id))
+          if (!column) { errors.push(`failed to find column for task '${task.id}' in group '${group.id}', shits broke`);return errors }
+
+          if (column.items.length < 2) { errors.push(`column '${column.name}' requires at least 2 tasks to shift`) }
+          const itemIndex = column.items.findIndex(x => x.id === task.id)
+
+          if (args.location < 0) {
+            // moving left
+            if (itemIndex === 0) {
+              errors.push(`attempted to move zeroeth item left`)
+            }
+          } else {
+            // moving right
+            if (itemIndex+1 === column.items.length) {
+              errors.push(`attempted to move the last object right`)
+            }
+          }
+
+          return errors
+        },
+      },
+    },
+    task: {
+      create: (args) => {
+        const errors = []
+        const task = args?.task
+        if (!task) { errors.push('task property missing');return errors }
+
+        if (!task.name?.length) { errors.push('name required') }
+        // tasks cannot be moved between boards, so the board must exist up front
+        if (!task.boardId?.length) { errors.push('boardId required') }
+        if (errors.length) { return errors }
+
+        const board = this.#boards.find(x => x.id === task.boardId)
+        if (!board) { errors.push(`board with id '${task.boardId}' not found`);return errors }
+
+        // optional placement at creation time, 'column' defaults to 'todo'
+        if (task.groupId?.length) {
+          const group = this.#groups.find(x => x.id === task.groupId)
+          if (!group) {
+            errors.push(`group with id '${task.groupId}' not found`)
+          } else {
+            const groupBoardId = this.helper.boardIdForGroup(group.id)
+            if (!groupBoardId) {
+              errors.push(`failed to resolve board for group '${group.id}'`)
+            } else if (groupBoardId !== task.boardId) {
+              errors.push(`group '${group.id}' belongs to board '${groupBoardId}', not '${task.boardId}'`)
+            }
+            const column = task.column ?? 'todo'
+            if (!group.columns.find(x => x.name === column)) {
+              errors.push(`column '${column}' not found in group '${group.id}'`)
+            }
+          }
+        }
+
+        // ids are generated from the board but the caller is allowed to supply one
+        // (hydrate/debug), in which case it still has to be unique
+        if (task.id?.length && this.#tasks.find(x => x.id === task.id)) {
+          errors.push(`task with id '${task.id}' already exists`)
+        }
+
+        if (Array.isArray(task.tags)) {
+          const dupes = this.helper.checkForTagDupes(task.tags)
+          if (dupes.length) {
+            errors.push(`duplicate tags '${dupes.join(', ')}' found`)
+          }
+        }
+
+        if (task.date_due != null && isNaN(new Date(task.date_due).getTime())) {
+          errors.push(`invalid date_due '${task.date_due}'`)
+        }
+        if (task.date_completed != null && isNaN(new Date(task.date_completed).getTime())) {
+          errors.push(`invalid date_completed '${task.date_completed}'`)
+        }
+
+        return errors
+      },
+      update: (args) => {
+        const errors = []
+        const task = args?.task
+        if (!task) {errors.push('task property missing');return errors}
+        const existing = this.#tasks.find(x => x.id === task.id)
+        if (!existing) { errors.push(`task not found by id '${task.id}'`);return errors}
+
+        // boardId is immutable once created(see schema.task comment)
+        if (task.boardId?.length && task.boardId !== existing.boardId) {
+          errors.push(`task '${task.id}' cannot be moved between boards ('${existing.boardId}' => '${task.boardId}')`)
+        }
+
+        if (task.name != null && !task.name.length) { errors.push('name required') }
+
+        if (Array.isArray(task.tags)) {
+          const dupes = this.helper.checkForTagDupes(task.tags)
+          if (dupes.length) {
+            errors.push(`duplicate tags '${dupes.join(', ')}' found`)
+          }
+        }
+
+        if (Object.hasOwn(task, 'date_due') && task.date_due != null && isNaN(new Date(task.date_due).getTime())) {
+          errors.push(`invalid date_due '${task.date_due}'`)
+        }
+        if (Object.hasOwn(task, 'date_completed') && task.date_completed != null && isNaN(new Date(task.date_completed).getTime())) {
+          errors.push(`invalid date_completed '${task.date_completed}'`)
+        }
+
+        return errors
+      },
+      shift: (args) => {
+        const errors = []
+        if (!args.id?.length) { errors.push('arg id required');return errors}
+
+        if (isNaN(args.location)) { errors.push(`location should be int`) }
+        if (args.location === 0) { errors.push(`location should be less than or greater than 0`) }
+
+        const task = this.#tasks.find(x => x.id === args.id)
+        if (!task) { errors.push(`task with id '${args.id}' not found`) }
+
+        if (errors.length) { return errors }
+
+        // tasks are ordered inside their board's task list(see schema.board.tasks)
+        const board = this.#boards.find(x => x.id === task.boardId)
+        if (!board) { errors.push(`board '${task.boardId}' not found`);return errors }
+
+        if (board.tasks.length < 2) { errors.push(`board '${board.id}' requires at least 2 tasks to shift`) }
+        const itemIndex = board.tasks.findIndex(x => x.id === task.id)
+        if (itemIndex < 0) { errors.push(`task '${task.id}' exists in global array but missing in board '${board.id}', shits broke`) }
+
+        if (args.location < 0) {
+          // moving left
+          if (itemIndex === 0) {
+            errors.push(`attempted to move zeroeth item left`)
+          }
+        } else {
+          // moving right
+          if (itemIndex+1 === board.tasks.length) {
+            errors.push(`attempted to move the last object right`)
+          }
+        }
+
+        return errors
+      },
+      delete: (args) => {
+        const errors = []
+        if (!args.id?.length) { errors.push('arg id required');return errors}
+
+        const task = this.#tasks.find(x => x.id === args.id)
+        if (!task) { errors.push(`task with id '${args.id}' not found`);return errors }
+
+        // we are not requiring a shallow ref in board.tasks here since board.task.remove
+        // can legitimately unlink a task from the board view
+        return errors
+      },
     }
   }
   api = {
@@ -412,8 +672,8 @@ class NabnakDal {
         return {success:true}
       },
       tag: {
-        add: (args) => {},
-        remove: (args) => {},
+        add: (args) => { /* needs implementation */ },
+        remove: (args) => { /* needs implementation */ },
       },
       group: {
         // in order to prevent sending 'parentType' enum to callers, callers will execute
@@ -424,22 +684,57 @@ class NabnakDal {
           args.parentType = this.#schema.enum.group.parentType.board
           return this.api.group.create(args)
         },
-        remove: (args) => {},
-        shift: (args) => {},
+        remove: (args) => { /* needs implementation */ },
+        shift: (args) => { /* needs implementation */ },
       },
       task: {
-        add: (args) => {},
-        remove: (args) => {},
-        shift: (args) => {},
+        // a task always belongs to exactly one board(boardId is immutable), so all
+        // board.tasks holds is the ordering ref for the board view
+        add: (args) => {
+          const errors = this.validate.board.task.add(args)
+          if (errors.length) { return {success:false,errors} }
+
+          const board = this.#boards.find(x => x.id === args.boardId)
+          if (!board.tasks.find(x => x.id === args.taskId)) {
+            board.tasks.push({id:args.taskId})
+          }
+
+          board.date_updated = new Date().toISOString()
+          _.logger.log(`task '${args.taskId}' added to board '${board.id}'`)
+          return {success:true}
+        },
+        remove: (args) => {
+          const errors = this.validate.board.task.remove(args)
+          if (errors.length) { return {success:false,errors} }
+
+          const board = this.#boards.find(x => x.id === args.boardId)
+          const refIndex = board.tasks.findIndex(x => x.id === args.taskId)
+          board.tasks.splice(refIndex, 1)[0]
+
+          board.date_updated = new Date().toISOString()
+          _.logger.log(`task '${args.taskId}' removed from board '${board.id}'`)
+          return {success:true}
+        },
+        shift: (args) => {
+          // ordering a board's tasks is exactly api.task.shift
+          return this.api.task.shift({id:args.taskId, location:args.location})
+        },
       },
       comment: {
-        add: (args) => {},
-        update: (args) => {},
-        remove: (args) => {},
+        add: (args) => { /* needs implementation */ },
+        update: (args) => { /* needs implementation */ },
+        remove: (args) => { /* needs implementation */ },
       },
     },
     group: {
-      get: (args) => {},
+      get: (args) => {
+        if (args?.id) {
+          const group = this.#groups.find(x => x.id === args.id)
+          if (group) { return {group:structuredClone(group)} }
+          else return {}
+        }
+        return {groups:structuredClone(this.#groups)}
+      },
       create: (args) => {
         const errors = this.validate.group.create(args)
         if (errors.length) { return {success:false,errors} }
@@ -503,7 +798,7 @@ class NabnakDal {
           parent.groups.splice(shallowRefIndex, 1)[0]
         } else if (deletedGroup.parentType === this.#schema.enum.group.parentType.group) {
           const parent = this.#groups.find(x => x.id === deletedGroup.parentId)
-          shallowRefIndex = parent.groups.findIndex(x => x.id === args.id)
+          const shallowRefIndex = parent.groups.findIndex(x => x.id === args.id)
           parent.groups.splice(shallowRefIndex, 1)[0]
         }
 
@@ -528,20 +823,20 @@ class NabnakDal {
         const item = parent.groups.splice(itemIndex, 1)[0]
         parent.groups.splice(targetIndex, 0, item)
         
-        group.date_udpated = new Date().toISOString()
+        group.date_updated = new Date().toISOString()
         this.helper.recursivelyUpdateAllParents(group.parentId, group.parentType)
         _.logger.log(`group '${group.name}' updated(shifted)`,null,group)
 
         return {success:true}
       },
       tag: {
-        add: (args) => {},
-        remove: (args) => {},
+        add: (args) => { /* needs implementation */ },
+        remove: (args) => { /* needs implementation */ },
       },
       column: {
-        add: (args) => {},
-        remove: (args) => {},
-        shift: (args) => {},
+        add: (args) => { /* needs implementation */ },
+        remove: (args) => { /* needs implementation */ },
+        shift: (args) => { /* needs implementation */ },
       },
       group: {
         create: (args) => {
@@ -549,34 +844,201 @@ class NabnakDal {
           args.parentType = this.#schema.enum.group.parentType.group
           return this.api.group.create(args)
         },
-        remove: (args) => {},
-        shift: (args) => {},
+        remove: (args) => { /* needs implementation */ },
+        shift: (args) => { /* needs implementation */ },
       },
       task: {
-        add: (args) => {},
-        remove: (args) => {},
-        shift: (args) => {},
+        // tasks can be referenced in several groups/columns(schema comment on task), we
+        // only ever manage this group's refs. 'column' defaults to 'todo'.
+        add: (args) => {
+          const errors = this.validate.group.task.add(args)
+          if (errors.length) { return {success:false,errors} }
+
+          const group = this.#groups.find(x => x.id === args.groupId)
+          const task = this.#tasks.find(x => x.id === args.taskId)
+          const column = group.columns.find(x => x.name === (args.column ?? 'todo'))
+
+          group.tasks.push({id:task.id})
+          column.items.push({id:task.id})
+
+          task.date_updated = new Date().toISOString()
+          this.helper.recursivelyUpdateAllParents(group.id, this.#schema.enum.group.parentType.group)
+          _.logger.log(`task '${task.name}' added to group '${group.name}'(${column.name})`)
+          return {success:true}
+        },
+        remove: (args) => {
+          const errors = this.validate.group.task.remove(args)
+          if (errors.length) { return {success:false,errors} }
+
+          const group = this.#groups.find(x => x.id === args.groupId)
+          const task = this.#tasks.find(x => x.id === args.taskId)
+
+          const refIndex = group.tasks.findIndex(x => x.id === task.id)
+          if (refIndex >= 0) { group.tasks.splice(refIndex, 1) }
+          // the task only sits in one column, but we dont know(or care) which one
+          for (const column of group.columns) {
+            const itemIndex = column.items.findIndex(x => x.id === task.id)
+            if (itemIndex >= 0) { column.items.splice(itemIndex, 1) }
+          }
+
+          task.date_updated = new Date().toISOString()
+          this.helper.recursivelyUpdateAllParents(group.id, this.#schema.enum.group.parentType.group)
+          _.logger.log(`task '${task.name}' removed from group '${group.name}'`)
+          return {success:true}
+        },
+        shift: (args) => {
+          const errors = this.validate.group.task.shift(args)
+          if (errors.length) { return {success:false,errors} }
+
+          const group = this.#groups.find(x => x.id === args.groupId)
+          const task = this.#tasks.find(x => x.id === args.taskId)
+          const column = group.columns.find(c => c.items.find(x => x.id === task.id))
+          const itemIndex = column.items.findIndex(x => x.id === task.id)
+          // we dont care about overshooting, splice clamps to the start/end of the array
+          const targetIndex = itemIndex + args.location
+          const item = column.items.splice(itemIndex, 1)[0]
+          column.items.splice(targetIndex, 0, item)
+
+          task.date_updated = new Date().toISOString()
+          this.helper.recursivelyUpdateAllParents(group.id, this.#schema.enum.group.parentType.group)
+          _.logger.log(`successfully shifted task '${task.name}' in group '${group.name}'(${column.name}) ${args.location < 0 ? 'left' : 'right'}`)
+          return {success:true}
+        },
       },
       comment: {
-        add: (args) => {},
-        update: (args) => {},
-        remove: (args) => {},
+        add: (args) => { /* needs implementation */ },
+        update: (args) => { /* needs implementation */ },
+        remove: (args) => { /* needs implementation */ },
       }
     },
     task: {
-      get: (args) => {},
-      create: (args) => {},
-      update: (args) => {},
-      delete: (args) => {},
-      shift: (args) => {},
+      // queries are still up in the air(see board.get) so this is just a straight read
+      get: (args) => {
+        if (args?.id) {
+          const task = this.#tasks.find(x => x.id === args.id)
+          if (task) { return {task:structuredClone(task)} }
+          else return {}
+        }
+        return {tasks:structuredClone(this.#tasks)}
+      },
+      create: (args) => {
+        const errors = this.validate.task.create(args)
+        if (errors.length) { return {success:false,errors} }
+
+        const date = new Date()
+        const board = this.#boards.find(x => x.id === args.task.boardId)
+        const task = structuredClone(this.#schema.task)
+        // autoIncrementId increases every time a task is created, no matter what, so
+        // ids stay unique even if a caller supplies an id of their own
+        board.autoIncrementId += 1
+        // ids look like '<board slug>-<autoIncrementId>', ex 'YAHZ-1'
+        task.id = args.task.id?.length ? args.task.id : `${board.slug}-${board.autoIncrementId}`
+        task.boardId = board.id
+        task.name = args.task.name
+        task.description = args.task.description
+        if (Array.isArray(args.task.tags)) {
+          task.tags = args.task.tags
+        }
+        if (args.task.metadata) {
+          task.metadata = args.task.metadata
+        }
+        task.date_due = args.task.date_due ?? null
+        task.date_completed = args.task.date_completed ?? null
+        task.date_created = date.toISOString()
+        task.date_updated = date.toISOString()
+
+        this.#tasks.push(task)
+
+        // currently the only reason we are adding a shallow ref to .tasks prop is for positioning
+        board.tasks.push({id:task.id})
+
+        // optional placement into a group/column(validated above), same refs
+        // group.task.add would create so a caller can create + place in one call
+        if (args.task.groupId?.length) {
+          const group = this.#groups.find(x => x.id === args.task.groupId)
+          const column = group.columns.find(x => x.name === (args.task.column ?? 'todo'))
+          group.tasks.push({id:task.id})
+          column.items.push({id:task.id})
+          this.helper.recursivelyUpdateAllParents(group.id, this.#schema.enum.group.parentType.group)
+        }
+
+        this.helper.recursivelyUpdateAllParents(board.id, this.#schema.enum.group.parentType.board)
+        _.logger.log(`task '${task.name}' created`,null,task)
+        return {success:true,data:{id:task.id}}
+      },
+      update: (args) => {
+        const errors = this.validate.task.update(args)
+        if (errors.length) { return {success:false,errors} }
+
+        const task = this.#tasks.find(x => x.id === args.task.id)
+        if (args.task.name?.length) { task.name = args.task.name }
+        if (Object.hasOwn(args.task, 'description')) { task.description = args.task.description }
+        if (Array.isArray(args.task.tags)) {
+          task.tags = args.task.tags
+        }
+        if (Object.hasOwn(args.task, 'date_due')) { task.date_due = args.task.date_due }
+        if (Object.hasOwn(args.task, 'date_completed')) { task.date_completed = args.task.date_completed }
+        if (Object.hasOwn(args.task, 'metadata')) { task.metadata = args.task.metadata }
+
+        task.date_updated = new Date().toISOString()
+        this.helper.recursivelyUpdateAllParents(task.boardId, this.#schema.enum.group.parentType.board)
+        _.logger.log(`task '${task.name}' updated`,null,task)
+        return {success:true}
+      },
+      delete: (args) => {
+        const errors = this.validate.task.delete(args)
+        if (errors.length) { return {success:false,errors} }
+
+        const index = this.#tasks.findIndex(x => x.id === args.id)
+        const deletedTask = this.#tasks.splice(index, 1)[0]
+
+        // remove our own shallow ref from the board
+        const board = this.#boards.find(x => x.id === deletedTask.boardId)
+        if (board) {
+          const shallowRefIndex = board.tasks.findIndex(x => x.id === deletedTask.id)
+          if (shallowRefIndex >= 0) { board.tasks.splice(shallowRefIndex, 1) }
+        }
+
+        // tasks can be referenced in multiple places(schema.group.tasks and group.columns),
+        // nothing writes those refs yet but clean them up so we cant orphan anything
+        for (const group of this.#groups) {
+          const groupRefIndex = group.tasks.findIndex(x => x.id === deletedTask.id)
+          if (groupRefIndex >= 0) { group.tasks.splice(groupRefIndex, 1) }
+          for (const column of group.columns) {
+            const itemRefIndex = column.items.findIndex(x => x.id === deletedTask.id)
+            if (itemRefIndex >= 0) { column.items.splice(itemRefIndex, 1) }
+          }
+        }
+
+        this.helper.recursivelyUpdateAllParents(deletedTask.boardId, this.#schema.enum.group.parentType.board)
+        _.logger.log(`task '${deletedTask.name}' deleted`)
+        return {success:true}
+      },
+      shift: (args) => {
+        const errors = this.validate.task.shift(args)
+        if (errors.length) { return {success:false,errors} }
+
+        const task = this.#tasks.find(x => x.id === args.id)
+        const board = this.#boards.find(x => x.id === task.boardId)
+        const itemIndex = board.tasks.findIndex(x => x.id === args.id)
+        // we dont care about overshooting, splice clamps to the start/end of the array
+        const targetIndex = itemIndex + args.location
+        const item = board.tasks.splice(itemIndex, 1)[0]
+        board.tasks.splice(targetIndex, 0, item)
+
+        task.date_updated = new Date().toISOString()
+        this.helper.recursivelyUpdateAllParents(task.boardId, this.#schema.enum.group.parentType.board)
+        _.logger.log(`successfully shifted task '${task.name}' ${args.location < 0 ? 'left' : 'right'}`)
+        return {success:true}
+      },
       tag: {
-        add: (args) => {},
-        remove: (args) => {},
+        add: (args) => { /* needs implementation */ },
+        remove: (args) => { /* needs implementation */ },
       },
       comment: {
-        add: (args) => {},
-        update: (args) => {},
-        remove: (args) => {},
+        add: (args) => { /* needs implementation */ },
+        update: (args) => { /* needs implementation */ },
+        remove: (args) => { /* needs implementation */ },
       }
     }
   }
@@ -695,29 +1157,12 @@ class NabnakDal {
 }
 
 ;(async () => {
+  testDalClass()
   //testShifting()
-  dalStuff()
   //recursivelyUpdateObjects()
 })()
 
-function recursivelyUpdateObjects() {
-  const dal = new NabnakDal({
-    debug: true,
-    boards: [
-      { id: 'yahbsite', name: 'yahbsite', slug: 'yahz'}
-    ],
-    groups: [
-      { id: 'nabnak', name: 'nabnak', parentId: 'yahbsite', parentType: 'board' },
-      { id: 'future-tasks', name: 'future-tasks', parentId: 'nabnak', parentType: 'group' },
-      { id: 'ideas', name: 'ideas', parentId: 'nabnak', parentType: 'group' },
-      { id: 'active', name: 'active', parentId: 'nabnak', parentType: 'group' },
-      { id: 'batch-0', name: 'batch-0', parentId: 'active', parentType: 'group' },
-    ],
-  })
-  console.log('data', dal.data)
-  dal.helper.recursivelyUpdateAllParents('batch-0', 'group')
-}
-function dalStuff() {
+function testDalClass() {
   const dal = new NabnakDal()
   const createBoardRes = dal.api.board.create({ board: {
     name: 'yahbsite',
@@ -795,6 +1240,129 @@ function dalStuff() {
   const deleteGroupRes = dal.api.group.delete({ id: createGroupForShiftAndDeleteRes.data.id, })
   if (!deleteGroupRes.success) { console.log('failed to delete group', deleteGroupRes);return}
   console.log(`board after delete, '${createGroupForShiftAndDeleteRes.data.id}' should be gone fully`, JSON.stringify(dal.data,' ',2))
+
+  
+  // tasks
+  const createTaskRes = dal.api.task.create({ task: {
+    boardId: createBoardRes.data.id,
+    name: 'first task',
+    description: 'task description',
+  }})
+  if (!createTaskRes.success) { console.log('failed to create task', createTaskRes.errors);return }
+  console.log('created task id(expecting YAHZ-1)', createTaskRes.data.id)
+
+  const getTaskRes = dal.api.task.get({id: createTaskRes.data.id})
+  if (!getTaskRes.task) { console.log(`failed to get task '${createTaskRes.data.id}'`);return }
+  console.log('got task', getTaskRes)
+  console.log('all tasks', dal.api.task.get())
+
+  const updateTaskRes = dal.api.task.update({ task: {
+    ...getTaskRes.task,
+    name: 'first task updated',
+    description: 'task description updated',
+    tags: ['tag0','tag1'],
+  }})
+  if (!updateTaskRes.success) { console.log('failed to update task', updateTaskRes.errors);return }
+  console.log('task after update', dal.api.task.get({id:createTaskRes.data.id}))
+  console.log('board date_updated should have bumped', dal.api.board.get({id:createBoardRes.data.id}).board.date_updated)
+
+  // boardId is immutable, this has to fail
+  const moveTaskToBoardRes = dal.api.task.update({ task: {
+    id: createTaskRes.data.id,
+    boardId: 'someotherboard',
+  }})
+  if (moveTaskToBoardRes.success) { console.log('updating task boardId should have failed');return }
+  console.log('task boardId update correctly failed', moveTaskToBoardRes.errors)
+
+  const createTaskForShiftAndDeleteRes = dal.api.task.create({ task: {
+    boardId: createBoardRes.data.id,
+    name: 'task-delete',
+  }})
+  if (!createTaskForShiftAndDeleteRes.success) {console.log('failed to create task for shift/delete',createTaskForShiftAndDeleteRes.errors);return}
+
+  const shiftTaskRes = dal.api.task.shift({ id: createTaskForShiftAndDeleteRes.data.id, location: -1 })
+  if (!shiftTaskRes.success) { console.log('failed to shift task', shiftTaskRes.errors);return }
+  console.log('board tasks after shift', dal.api.board.get({id:createBoardRes.data.id}).board.tasks)
+
+  const deleteTaskRes = dal.api.task.delete({ id: createTaskForShiftAndDeleteRes.data.id })
+  if (!deleteTaskRes.success) { console.log('failed to delete task', deleteTaskRes.errors);return }
+  console.log(`board after task delete, '${createTaskForShiftAndDeleteRes.data.id}' should be gone fully`, JSON.stringify(dal.data,' ',2))
+
+  // required args
+  const createTaskWithoutBoardRes = dal.api.task.create({ task: { name: 'orphan' } })
+  if (createTaskWithoutBoardRes.success) { console.log('creating a task without boardId should have failed');return }
+  console.log('task create without boardId correctly failed', createTaskWithoutBoardRes.errors)
+
+  const deleteMissingTaskRes = dal.api.task.delete({ id: 'YAHZ-999' })
+  if (deleteMissingTaskRes.success) { console.log('deleting a missing task should have failed');return }
+  console.log('task delete of missing id correctly failed', deleteMissingTaskRes.errors)
+
+  // group/column task placement
+  const createTaskInGroupRes = dal.api.task.create({ task: {
+    boardId: createBoardRes.data.id,
+    groupId: createGroupForBoardRes.data.id,
+    column: 'inprogress',
+    name: 'task in progress',
+  }})
+  if (!createTaskInGroupRes.success) { console.log('failed to create task in group', createTaskInGroupRes.errors);return }
+  console.log('group after task create', JSON.stringify(dal.data.groups.find(x => x.id === createGroupForBoardRes.data.id),' ',2))
+
+  const addTaskToGroupRes = dal.api.group.task.add({
+    groupId: createGroupForBoardRes.data.id,
+    taskId: createTaskRes.data.id,
+    column: 'inprogress',
+  })
+  if (!addTaskToGroupRes.success) { console.log('failed to add task to group', addTaskToGroupRes.errors);return }
+
+  // the task is already in the group, this has to fail
+  const addTaskToGroupAgainRes = dal.api.group.task.add({
+    groupId: createGroupForBoardRes.data.id,
+    taskId: createTaskRes.data.id,
+  })
+  if (addTaskToGroupAgainRes.success) { console.log('adding a task to the same group twice should have failed');return }
+  console.log('duplicate group task add correctly failed', addTaskToGroupAgainRes.errors)
+
+  const createTaskBadColumnRes = dal.api.task.create({ task: {
+    boardId: createBoardRes.data.id,
+    groupId: createGroupForBoardRes.data.id,
+    column: 'bogus',
+    name: 'bad column task',
+  }})
+  if (createTaskBadColumnRes.success) { console.log('creating a task in a bogus column should have failed');return }
+  console.log('task create in bogus column correctly failed', createTaskBadColumnRes.errors)
+
+  const shiftGroupTaskRes = dal.api.group.task.shift({
+    groupId: createGroupForBoardRes.data.id,
+    taskId: createTaskRes.data.id,
+    location: -1,
+  })
+  if (!shiftGroupTaskRes.success) { console.log('failed to shift task in group', shiftGroupTaskRes.errors);return }
+  console.log('group columns after shift', JSON.stringify(dal.data.groups.find(x => x.id === createGroupForBoardRes.data.id).columns,' ',2))
+
+  const removeGroupTaskRes = dal.api.group.task.remove({
+    groupId: createGroupForBoardRes.data.id,
+    taskId: createTaskInGroupRes.data.id,
+  })
+  if (!removeGroupTaskRes.success) { console.log('failed to remove task from group', removeGroupTaskRes.errors);return }
+  console.log('group after task remove', JSON.stringify(dal.data.groups.find(x => x.id === createGroupForBoardRes.data.id),' ',2))
+
+  const removeBoardTaskRefRes = dal.api.board.task.remove({
+    boardId: createBoardRes.data.id,
+    taskId: createTaskInGroupRes.data.id,
+  })
+  if (!removeBoardTaskRefRes.success) { console.log('failed to remove task ref from board', removeBoardTaskRefRes.errors);return }
+  console.log('board tasks after ref remove', dal.api.board.get({id:createBoardRes.data.id}).board.tasks)
+
+  const addBoardTaskRefRes = dal.api.board.task.add({
+    boardId: createBoardRes.data.id,
+    taskId: createTaskInGroupRes.data.id,
+  })
+  if (!addBoardTaskRefRes.success) { console.log('failed to add task ref to board', addBoardTaskRefRes.errors);return }
+  console.log('board tasks after ref add', dal.api.board.get({id:createBoardRes.data.id}).board.tasks)
+
+  // TODO: add/remove/update comments to board, group and task via dal.<type>.comment.fn()
+  
+  // TODO: add and remove tags to board, group and task via dal.<type>.tag.fn()
 }
 
 
@@ -828,4 +1396,21 @@ function testShifting() {
       console.log(`move right operation complete`, arr)
     }
   }
+}
+function recursivelyUpdateObjects() {
+  const dal = new NabnakDal({
+    debug: true,
+    boards: [
+      { id: 'yahbsite', name: 'yahbsite', slug: 'yahz'}
+    ],
+    groups: [
+      { id: 'nabnak', name: 'nabnak', parentId: 'yahbsite', parentType: 'board' },
+      { id: 'future-tasks', name: 'future-tasks', parentId: 'nabnak', parentType: 'group' },
+      { id: 'ideas', name: 'ideas', parentId: 'nabnak', parentType: 'group' },
+      { id: 'active', name: 'active', parentId: 'nabnak', parentType: 'group' },
+      { id: 'batch-0', name: 'batch-0', parentId: 'active', parentType: 'group' },
+    ],
+  })
+  console.log('data', dal.data)
+  dal.helper.recursivelyUpdateAllParents('batch-0', 'group')
 }
