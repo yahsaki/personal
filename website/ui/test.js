@@ -978,7 +978,9 @@ class NabnakDal {
         }
         if (Object.hasOwn(args.task, 'date_due')) { task.date_due = args.task.date_due }
         if (Object.hasOwn(args.task, 'date_completed')) { task.date_completed = args.task.date_completed }
-        if (Object.hasOwn(args.task, 'metadata')) { task.metadata = args.task.metadata }
+        // metadata prop itself wont be set like this, only properties in metadata in a 
+        // separate function
+        //if (Object.hasOwn(args.task, 'metadata')) { task.metadata = args.task.metadata }
 
         task.date_updated = new Date().toISOString()
         this.helper.recursivelyUpdateAllParents(task.boardId, this.#schema.enum.group.parentType.board)
