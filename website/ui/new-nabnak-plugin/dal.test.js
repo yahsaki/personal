@@ -247,5 +247,164 @@ test('hydrate rejects a parent cycle', () => {
   if (!threw?.includes('never reaches a board')) { throw Error(`expected cycle failure, got ${threw}`) }
 })
 
+console.log('\nedit workflow (describe + api.edit + subscribe)')
+test('describe.task gives fields, values and group options with their columns', () => {
+  const { dal, g, ids } = seed()
+  const d = dal.describe.task({ id: ids.testTask })
+  eq(d.fields.map(f => f.key), ['name', 'description', 'tags', 'groupId', 'column', 'date_due', 'date_completed'])
+  const group = d.fields.find(f => f.key === 'groupId')
+  eq(group.value, g.tests)
+  eq(group.options.find(o => o.value === g.tests).label, 'nabnak / dal / tests')
+  eq(group.options.find(o => o.value === g.tests).columns, ['todo', 'inprogress', 'done'])
+  eq(group.options.some(o => o.value === g.kIdeas), false, 'other boards groups')
+  eq(d.fields.find(f => f.key === 'column').value, 'done')
+})
+test('edit normalizes raw input and only applies what changed', () => {
+  const { dal, ids } = seed()
+  const res = ok(dal.api.edit({ type: 'task', id: ids.dalTask,
+    changes: { name: '  dal work  ', tags: ' bug, type-feature ,', date_due: '2026-11-05', description: 'line 1\n  line 2\n\n' } }))
+  eq(res.changed.sort(), ['date_due', 'description', 'tags'])
+  const t = dal.api.task.get({ id: ids.dalTask }).task
+  eq([t.tags, t.date_due, t.description], [['bug', 'type-feature'], '2026-11-05', 'line 1\n  line 2'])
+})
+test('edit returns per field errors and applies nothing', () => {
+  const { dal, ids } = seed()
+  const res = dal.api.edit({ type: 'task', id: ids.dalTask,
+    changes: { name: '   ', tags: 'a, A, has space', date_due: 'next tuesday', description: 'should not land' } })
+  eq(res.success, false)
+  eq(Object.keys(res.fields).sort(), ['date_due', 'name', 'tags'])
+  eq(res.fields.tags.length, 2)
+  eq(dal.api.task.get({ id: ids.dalTask }).task.description ?? null, null, 'nothing applied')
+})
+test('edit status = column move', () => {
+  const { dal, g, ids } = seed()
+  ok(dal.api.edit({ type: 'task', id: ids.dalTask, changes: { column: 'done' } }))
+  eq(dal.format.task({ id: ids.dalTask }).task.column, 'done')
+})
+test('edit group keeps status when the new group has it', () => {
+  const { dal, g, ids } = seed()
+  ok(dal.api.edit({ type: 'task', id: ids.dalTask, changes: { groupId: g.renderer } }))
+  const t = dal.format.task({ id: ids.dalTask }).task
+  eq([t.groupId, t.column], [g.renderer, 'inprogress'])
+  eq(dal.helper.verify(), [])
+})
+test('edit group + status together, rename in the same save', () => {
+  const { dal, g, ids } = seed()
+  ok(dal.api.edit({ type: 'task', id: ids.loose, changes: { groupId: g.ideas, column: 'done', name: 'not loose' } }))
+  const t = dal.format.task({ id: ids.loose }).task
+  eq([t.groupId, t.column, t.name], [g.ideas, 'done', 'not loose'])
+})
+test('edit ungroup a task, and status without a group is refused', () => {
+  const { dal, ids } = seed()
+  ok(dal.api.edit({ type: 'task', id: ids.dalTask, changes: { groupId: '' } }))
+  eq(dal.format.task({ id: ids.dalTask }).task.groupId, null)
+  const res = dal.api.edit({ type: 'task', id: ids.loose, changes: { column: 'done' } })
+  eq(Object.keys(res.fields), ['column'])
+})
+test('edit with base: concurrent change on the same field is a conflict, others still fine', () => {
+  const { dal, ids } = seed()
+  const opened = dal.describe.task({ id: ids.dalTask })
+  const base = Object.fromEntries(opened.fields.map(f => [f.key, f.value]))
+  // the cli changes the status while the editor is open
+  ok(dal.api.edit({ type: 'task', id: ids.dalTask, changes: { column: 'done' } }))
+  const res = dal.api.edit({ type: 'task', id: ids.dalTask, base, changes: { column: 'todo', name: 'x' } })
+  eq(Object.keys(res.fields), ['column'])
+  ok(dal.api.edit({ type: 'task', id: ids.dalTask, base, changes: { name: 'renamed' } }), 'non conflicting')
+})
+test('edit group: rename, parent move, cant pick itself or a descendant', () => {
+  const { dal, g } = seed()
+  const parent = dal.describe.group({ id: g.dal }).fields.find(f => f.key === 'parent')
+  eq(parent.options.map(o => o.value), ['', g.nabnak, g.renderer, g.ideas])
+  ok(dal.api.edit({ type: 'group', id: g.dal, changes: { name: 'data layer', parent: g.ideas } }))
+  eq(dal.api.group.get({ id: g.dal }).group.parentId, g.ideas)
+  ok(dal.api.edit({ type: 'group', id: g.dal, changes: { parent: '' } }))
+  eq(dal.api.group.get({ id: g.dal }).group.parentType, 'board')
+  eq(dal.api.edit({ type: 'group', id: g.dal, changes: { parent: g.tests } }).fields.parent.length, 1)
+  eq(dal.helper.verify(), [])
+})
+test('edit board: readonly fields refused', () => {
+  const { dal } = seed()
+  eq(dal.api.edit({ type: 'board', id: 'yahbsite', changes: { slug: 'NOPE' } }).fields.slug, ['read only'])
+  ok(dal.api.edit({ type: 'board', id: 'yahbsite', changes: { description: 'site', tags: 'personal' } }))
+  eq(dal.api.board.get({ id: 'yahbsite' }).board.tags, ['personal'])
+})
+test('subscribe fires once per successful change, not for reads or no-ops', () => {
+  const { dal, ids } = seed()
+  const seen = []
+  const off = dal.subscribe(e => seen.push(e.action))
+  dal.api.task.get({ id: ids.dalTask })
+  dal.api.edit({ type: 'task', id: ids.dalTask, changes: { name: 'dal work' } })  // no-op
+  dal.api.edit({ type: 'task', id: ids.dalTask, changes: { name: '' } })          // fails
+  dal.api.edit({ type: 'task', id: ids.dalTask, changes: { name: 'a', column: 'done' } }) // update + move inside
+  dal.api.task.create({ task: { boardId: 'yahbsite', name: 'new' } })
+  off()
+  dal.api.task.create({ task: { boardId: 'yahbsite', name: 'unheard' } })
+  eq(seen, ['api.edit', 'api.task.create'])
+})
+
+console.log('\ncreate workflow (template + api.create)')
+test('template.task picks defaults from where you clicked', () => {
+  const { dal, g } = seed()
+  const t = dal.template.task({ boardId: 'yahbsite', groupId: g.dal, column: 'inprogress' })
+  const v = Object.fromEntries(t.fields.map(f => [f.key, f.value]))
+  eq([v.board, v.groupId, v.column, v.name], ['yahbsite', g.dal, 'inprogress', ''])
+  eq(t.title, 'nabnak / dal')
+  // a column the group doesnt have falls back to its first
+  eq(dal.template.task({ boardId: 'yahbsite', groupId: g.dal, column: 'blocked' }).fields.find(f => f.key === 'column').value, 'todo')
+  eq(dal.template.task({ boardId: 'yahbsite', groupId: g.kIdeas }).success, false, 'other board group')
+})
+test('create task with context defaults and raw input', () => {
+  const { dal, g } = seed()
+  const res = ok(dal.api.create({ type: 'task', context: { boardId: 'yahbsite', groupId: g.dal, column: 'inprogress' },
+    values: { name: ' new thing ', tags: 'a, b', date_due: '2026-11-11' } }))
+  eq(res.id, 'YAHZ-7')
+  const t = dal.format.task({ id: res.id }).task
+  eq([t.name, t.groupId, t.column, t.tags, t.date_due], ['new thing', g.dal, 'inprogress', ['a', 'b'], '2026-11-11'])
+  eq(dal.helper.verify(), [])
+})
+test('create task: user can override the context group, status follows', () => {
+  const { dal, g } = seed()
+  const res = ok(dal.api.create({ type: 'task', context: { boardId: 'yahbsite', groupId: g.dal },
+    values: { name: 'x', groupId: g.ideas, column: 'done' } }))
+  eq(dal.format.task({ id: res.id }).task.groupId, g.ideas)
+  const loose = ok(dal.api.create({ type: 'task', context: { boardId: 'yahbsite', groupId: g.dal }, values: { name: 'y', groupId: '', column: '' } }))
+  eq(dal.format.task({ id: loose.id }).task.groupId, null)
+})
+test('create task: field errors, nothing created', () => {
+  const { dal, g } = seed()
+  const before = dal.data.tasks.length
+  const res = dal.api.create({ type: 'task', context: { boardId: 'yahbsite', groupId: g.dal },
+    values: { name: '', tags: 'a, a', column: 'nope', board: 'kikosaki' } })
+  eq(Object.keys(res.fields).sort(), ['board', 'name', 'tags'])
+  const res2 = dal.api.create({ type: 'task', context: { boardId: 'yahbsite', groupId: g.dal }, values: { name: 'z', column: 'nope' } })
+  eq(Object.keys(res2.fields), ['column'])
+  eq(dal.data.tasks.length, before)
+})
+test('create group at top level or nested, duplicate name lands on the name field', () => {
+  const { dal, g } = seed()
+  const top = ok(dal.api.create({ type: 'group', context: { boardId: 'yahbsite' }, values: { name: 'Playbox' } }))
+  eq(top.id, 'yahbsite/playbox')
+  const nested = ok(dal.api.create({ type: 'group', context: { boardId: 'yahbsite', parentGroupId: g.dal }, values: { name: 'migrations', tags: 'epic' } }))
+  eq(dal.api.group.get({ id: nested.id }).group.parentId, g.dal)
+  const dupe = dal.api.create({ type: 'group', context: { boardId: 'yahbsite' }, values: { name: 'RENDERER' } })
+  eq(Object.keys(dupe.fields), ['name'])
+  eq(dal.helper.verify(), [])
+})
+test('create board: slug uppercased, slug and name errors on their fields', () => {
+  const { dal } = seed()
+  const res = ok(dal.api.create({ type: 'board', values: { name: 'mp2g', slug: 'mptg' } }))
+  eq(dal.api.board.get({ id: res.id }).board.slug, 'MPTG')
+  const bad = dal.api.create({ type: 'board', values: { name: 'yahbsite', slug: 'toolong' } })
+  eq(Object.keys(bad.fields).sort(), ['name', 'slug'])
+})
+test('create notifies subscribers once', () => {
+  const { dal, g } = seed()
+  const seen = []
+  dal.subscribe(e => seen.push(e.action))
+  ok(dal.api.create({ type: 'task', context: { boardId: 'yahbsite', groupId: g.dal }, values: { name: 'n' } }))
+  dal.api.create({ type: 'task', context: { boardId: 'yahbsite' }, values: { name: '' } })
+  eq(seen, ['api.create'])
+})
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed ? 1 : 0)

@@ -13,6 +13,7 @@ class NabnakDal {
   constructor(args) {
     if (!args) { args = {} }
     this.#quiet = args.quiet === true
+    this.#wrapApi(this.api, 'api')
     if (Object.hasOwn(args, 'debug') && args.debug === true) {
       console.log('debug args', args)
       for (const i in args.boards) {
@@ -47,6 +48,35 @@ class NabnakDal {
       boards: structuredClone(this.#boards),
       groups: structuredClone(this.#groups),
       tasks: structuredClone(this.#tasks),
+    }
+  }
+
+  // change notifications. fn({ action }) runs after any api call that succeeded and changed
+  // something(everything except .get). nested calls(edit => task.update => ...) only fire once,
+  // for the outermost call. the renderer re-renders on it, a saver can debounce on it
+  #listeners = new Set()
+  #depth = 0
+  subscribe(fn) {
+    this.#listeners.add(fn)
+    return () => this.#listeners.delete(fn)
+  }
+  #wrapApi(obj, path) {
+    for (const key of Object.keys(obj)) {
+      const fn = obj[key]
+      if (typeof fn === 'object' && fn !== null) { this.#wrapApi(fn, `${path}.${key}`); continue }
+      if (typeof fn !== 'function' || key === 'get') { continue }
+      obj[key] = (...args) => {
+        this.#depth++
+        let res
+        try { res = fn(...args) } finally { this.#depth-- }
+        if (this.#depth === 0 && res?.success === true && res.changed?.length !== 0) {
+          for (const listener of this.#listeners) {
+            try { listener({ action: `${path}.${key}`, args: args[0] }) }
+            catch (e) { this.#log(`subscriber threw on ${path}.${key}: ${e.message}`, 'error') }
+          }
+        }
+        return res
+      }
     }
   }
   
@@ -149,6 +179,52 @@ class NabnakDal {
         if (!group) { return [] }
       }
       return chain
+    },
+    // 'YYYY-MM-DD' from anything date-ish, null for empty
+    dateOnly: (value) => {
+      if (value == null || value === '') { return null }
+      const date = new Date(value)
+      return isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10)
+    },
+    fieldText: (value) => Array.isArray(value) ? value.join(', ') : (value ?? ''),
+    // raw input => canonical value for a describe.* field. { value, errors }
+    normalizeField: (field, raw) => {
+      const errors = []
+      let value
+      switch (field.kind) {
+        case 'text':
+          value = String(raw ?? '').trim()
+          if (field.required && !value.length) { errors.push(`${field.label} required`) }
+          break
+        case 'textarea':
+          // keep line breaks and indentation, just drop trailing whitespace
+          value = String(raw ?? '').replace(/\s+$/, '')
+          break
+        case 'tags': {
+          const list = Array.isArray(raw) ? raw : String(raw ?? '').split(',')
+          value = list.map(t => String(t).trim()).filter(t => t.length)
+          const spaced = value.filter(t => /\s/.test(t))
+          if (spaced.length) { errors.push(`tags cant contain spaces('${spaced.join("', '")}'), use dashes`) }
+          const dupes = this.helper.checkForTagDupes(value)
+          if (dupes.length) { errors.push(`duplicate tags '${dupes.join(', ')}'`) }
+          break
+        }
+        case 'date':
+          if (raw == null || raw === '') { value = null; break }
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(String(raw)) || isNaN(new Date(raw).getTime())) {
+            errors.push(`'${raw}' is not a date(YYYY-MM-DD)`); value = null; break
+          }
+          value = String(raw)
+          break
+        case 'select':
+          value = String(raw ?? '')
+          // dependent selects(status) are checked against the chosen group when applying
+          if (!field.dependsOn && !field.options.find(o => o.value === value)) { errors.push(`'${value}' is not an option for ${field.label}`) }
+          break
+        default:
+          errors.push(`unknown field kind '${field.kind}'`)
+      }
+      return { value, errors }
     },
     // a task has exactly one home group(or none, ungrouped). the column it sits in there is
     // its status, so a second home would mean two statuses
@@ -754,6 +830,62 @@ class NabnakDal {
     }
   }
   api = {
+    // the update workflow's single write path. one call per save, whatever the editor touched:
+    //   { type:'task'|'group'|'board', id, changes:{ key:rawValue }, base:{ key:valueWhenOpened } }
+    // keys/values come from describe.*. raw values can be what an input holds('a, b' for tags,
+    // '' for an empty date), they get normalized here. everything is validated before anything
+    // is applied, so a save never half lands. base is optional: when given, a key whose current
+    // value no longer matches base is a conflict(someone changed it while you were editing)
+    // returns { success:true, changed:[keys] } or
+    //         { success:false, errors:[general], fields:{ key:[messages] } }
+    // the create half of the workflow. same field rules as edit, values default to the template's:
+    //   { type:'task'|'group'|'board', context:{ ...template args }, values:{ key:rawValue } }
+    // returns { success:true, type, id } or { success:false, errors:[general], fields:{ key:[] } }
+    create: (args) => {
+      const { type, context = {}, values = {} } = args ?? {}
+      const template = typeof this.template[type] === 'function' ? this.template[type] : null
+      if (!template) { return {success:false, errors:[`type '${type}' cant be created`], fields:{}} }
+      const t = template(context)
+      if (!t.success) { return {success:false, errors:t.errors, fields:{}} }
+
+      const errors = [], fields = {}, clean = {}
+      for (const key of Object.keys(values)) {
+        const field = t.fields.find(f => f.key === key)
+        if (!field) { errors.push(`'${key}' is not a ${type} field`) }
+        else if (field.readonly && values[key] !== field.value) { (fields[key] ??= []).push('set by where you create it') }
+      }
+      for (const field of t.fields) {
+        if (field.readonly) { continue }
+        const res = this.helper.normalizeField(field, Object.hasOwn(values, field.key) ? values[field.key] : field.value)
+        if (res.errors.length) { fields[field.key] = res.errors } else { clean[field.key] = res.value }
+      }
+      if (errors.length || Object.keys(fields).length) { return {success:false, errors, fields} }
+      return this.#applyCreate[type](t, clean)
+    },
+    edit: (args) => {
+      const { type, id, changes = {}, base } = args ?? {}
+      const describe = typeof this.describe[type] === 'function' ? this.describe[type] : null
+      if (!describe) { return {success:false, errors:[`type '${type}' is not editable`], fields:{}} }
+      const d = describe({ id })
+      if (!d.success) { return {success:false, errors:d.errors, fields:{}} }
+
+      const errors = [], fields = {}, patch = {}
+      const fieldErr = (key, msg) => { (fields[key] ??= []).push(msg) }
+      for (const [key, raw] of Object.entries(changes)) {
+        const field = d.fields.find(x => x.key === key)
+        if (!field) { errors.push(`'${key}' is not an editable ${type} field`); continue }
+        if (field.readonly) { fieldErr(key, 'read only'); continue }
+        if (base && Object.hasOwn(base, key) && JSON.stringify(base[key]) !== JSON.stringify(field.value)) {
+          fieldErr(key, `changed elsewhere to '${this.helper.fieldText(field.value)}' while you were editing`); continue
+        }
+        const res = this.helper.normalizeField(field, raw)
+        for (const msg of res.errors) { fieldErr(key, msg) }
+        if (!res.errors.length && JSON.stringify(res.value) !== JSON.stringify(field.value)) { patch[key] = res.value }
+      }
+      if (errors.length || Object.keys(fields).length) { return {success:false, errors, fields} }
+      if (!Object.keys(patch).length) { return {success:true, changed:[]} }
+      return this.#applyEdit[type](d, patch)
+    },
     board: {
       get: (args) => {
         if (args?.id) {
@@ -1444,6 +1576,271 @@ class NabnakDal {
       total: total + ungrouped,
       groups: groups.map(g => this.#formatGroupNode(g, 0)),
     }
+  }
+  // what the editor is allowed to touch, with current values and options. no setup fns: the
+  // options are worked out here from live data. a field looks like
+  //   { key, label, kind:'text'|'textarea'|'tags'|'date'|'select', value, required?, readonly?,
+  //     options?:[{ value, label, columns? }], dependsOn? }
+  // value is canonical(tags array, date 'YYYY-MM-DD' or null, select value string)
+  describe = {
+    task: (args) => {
+      const task = this.#tasks.find(x => x.id === args?.id)
+      if (!task) { return {success:false, errors:[`task '${args?.id}' not found`]} }
+      const board = this.#boards.find(x => x.id === task.boardId)
+      const home = this.helper.homeGroupOf(task.id)
+      const column = home?.columns.find(c => c.items.find(x => x.id === task.id))?.name ?? ''
+      // every group on the board in tree order, each carrying its columns so the editor can
+      // swap the status options when the group changes without asking us again
+      const groupOptions = this.#groupOptions(board.id)
+      return {
+        success: true, type:'task', id:task.id, title:task.name, boardId:board.id,
+        fields: [
+          { key:'name', label:'name', kind:'text', value:task.name, required:true },
+          { key:'description', label:'description', kind:'textarea', value:task.description ?? '' },
+          { key:'tags', label:'tags', kind:'tags', value:[...task.tags] },
+          { key:'groupId', label:'group', kind:'select', value:home?.id ?? '', options:groupOptions },
+          { key:'column', label:'status', kind:'select', value:column, dependsOn:'groupId',
+            options:(home?.columns ?? []).map(c => ({ value:c.name, label:c.name })) },
+          { key:'date_due', label:'due', kind:'date', value:this.helper.dateOnly(task.date_due) },
+          { key:'date_completed', label:'completed', kind:'date', value:this.helper.dateOnly(task.date_completed) },
+        ],
+      }
+    },
+    group: (args) => {
+      const group = this.#groups.find(x => x.id === args?.id)
+      if (!group) { return {success:false, errors:[`group '${args?.id}' not found`]} }
+      const boardId = this.helper.boardIdForGroup(group.id)
+      // can't become a child of itself or anything below it
+      const blocked = new Set([group.id, ...this.helper.descendantGroupIds(group.id)])
+      const parentOptions = this.#parentOptions(boardId, blocked)
+      return {
+        success: true, type:'group', id:group.id, title:group.name, boardId,
+        fields: [
+          { key:'name', label:'name', kind:'text', value:group.name, required:true },
+          { key:'description', label:'description', kind:'textarea', value:group.description ?? '' },
+          { key:'tags', label:'tags', kind:'tags', value:[...group.tags] },
+          { key:'parent', label:'parent', kind:'select', options:parentOptions,
+            value:group.parentType === this.#schema.enum.group.parentType.group ? group.parentId : '' },
+        ],
+      }
+    },
+    board: (args) => {
+      const board = this.#boards.find(x => x.id === args?.id)
+      if (!board) { return {success:false, errors:[`board '${args?.id}' not found`]} }
+      return {
+        success: true, type:'board', id:board.id, title:board.name, boardId:board.id,
+        fields: [
+          // name/slug changes arent supported yet(ids and task ids derive from them)
+          { key:'name', label:'name', kind:'text', value:board.name, readonly:true },
+          { key:'slug', label:'slug', kind:'text', value:board.slug, readonly:true },
+          { key:'description', label:'description', kind:'textarea', value:board.description ?? '' },
+          { key:'tags', label:'tags', kind:'tags', value:[...board.tags] },
+        ],
+      }
+    },
+  }
+  // same field shapes as describe.*, but for something that doesnt exist yet. args are the
+  // context it is being created in, they only pick defaults(the user can still change them):
+  //   task:  { boardId, groupId?, column? }   group: { boardId, parentGroupId? }   board: {}
+  // fields marked readonly are context shown for orientation, create ignores them
+  template = {
+    task: (args) => {
+      const board = this.#boards.find(x => x.id === args?.boardId)
+      if (!board) { return {success:false, errors:[`board '${args?.boardId}' not found`]} }
+      let group = null
+      if (args.groupId) {
+        group = this.#groups.find(x => x.id === args.groupId)
+        if (!group || this.helper.boardIdForGroup(group.id) !== board.id) { return {success:false, errors:[`group '${args.groupId}' not found on board '${board.id}'`]} }
+      }
+      const columns = group?.columns.map(c => c.name) ?? []
+      // a lane's '+' can pass a column the group doesnt have(rolled up custom column), fall back
+      const column = columns.includes(args.column) ? args.column : (columns[0] ?? '')
+      return {
+        success: true, type:'task', boardId:board.id,
+        title: group ? this.helper.groupChain(group.id).map(x => x.name).join(' / ') : `${board.name} (ungrouped)`,
+        fields: [
+          { key:'board', label:'board', kind:'text', value:board.name, readonly:true },
+          { key:'name', label:'name', kind:'text', value:'', required:true },
+          { key:'description', label:'description', kind:'textarea', value:'' },
+          { key:'tags', label:'tags', kind:'tags', value:[] },
+          { key:'groupId', label:'group', kind:'select', value:group?.id ?? '', options:this.#groupOptions(board.id) },
+          { key:'column', label:'status', kind:'select', value:column, dependsOn:'groupId', options:columns.map(c => ({ value:c, label:c })) },
+          { key:'date_due', label:'due', kind:'date', value:null },
+        ],
+      }
+    },
+    group: (args) => {
+      const board = this.#boards.find(x => x.id === args?.boardId)
+      if (!board) { return {success:false, errors:[`board '${args?.boardId}' not found`]} }
+      if (args.parentGroupId && this.helper.boardIdForGroup(args.parentGroupId) !== board.id) {
+        return {success:false, errors:[`group '${args.parentGroupId}' not found on board '${board.id}'`]}
+      }
+      return {
+        success: true, type:'group', boardId:board.id,
+        title: args.parentGroupId ? this.helper.groupChain(args.parentGroupId).map(x => x.name).join(' / ') : board.name,
+        fields: [
+          { key:'board', label:'board', kind:'text', value:board.name, readonly:true },
+          { key:'name', label:'name', kind:'text', value:'', required:true },
+          { key:'parent', label:'parent', kind:'select', value:args.parentGroupId ?? '', options:this.#parentOptions(board.id, new Set()) },
+          { key:'description', label:'description', kind:'textarea', value:'' },
+          { key:'tags', label:'tags', kind:'tags', value:[] },
+        ],
+      }
+    },
+    board: () => ({
+      success: true, type:'board', boardId:null, title:'all boards',
+      fields: [
+        { key:'name', label:'name', kind:'text', value:'', required:true },
+        // task ids are '<slug>-<n>', so this is forever
+        { key:'slug', label:'slug (4 chars, task ids use it)', kind:'text', value:'', required:true },
+        { key:'description', label:'description', kind:'textarea', value:'' },
+        { key:'tags', label:'tags', kind:'tags', value:[] },
+      ],
+    }),
+  }
+  // every group on the board in tree order, each carrying its columns so the editor can
+  // swap the status options when the group changes without asking us again
+  #groupOptions(boardId) {
+    const options = [{ value:'', label:'(ungrouped)', columns:[] }]
+    for (const g of this.#boardGroupsInOrder(boardId)) {
+      options.push({ value:g.id, label:this.helper.groupChain(g.id).map(x => x.name).join(' / '), columns:g.columns.map(c => c.name) })
+    }
+    return options
+  }
+  #parentOptions(boardId, blocked) {
+    const options = [{ value:'', label:`${boardId} (top level)` }]
+    for (const g of this.#boardGroupsInOrder(boardId)) {
+      if (!blocked.has(g.id)) { options.push({ value:g.id, label:this.helper.groupChain(g.id).map(x => x.name).join(' / ') }) }
+    }
+    return options
+  }
+  // the older validators return plain strings. route them to the field they talk about so the
+  // editor can show them in place, anything unrecognized stays general
+  #routeErrors(messages, rules, fields, general) {
+    for (const msg of messages) {
+      const rule = rules.find(([pattern]) => pattern.test(msg))
+      if (rule) { (fields[rule[1]] ??= []).push(msg) } else { general.push(msg) }
+    }
+  }
+  #applyCreate = {
+    task: (t, v) => {
+      const fields = {}, errors = []
+      const task = { boardId:t.boardId, name:v.name, description:v.description, tags:v.tags, date_due:v.date_due }
+      if (v.groupId) {
+        const group = this.#groups.find(x => x.id === v.groupId)
+        const columns = group?.columns.map(c => c.name) ?? []
+        task.groupId = v.groupId
+        task.column = v.column || columns[0]
+        if (group && !columns.includes(task.column)) { fields.column = [`'${task.column}' is not a status in '${group.name}'`] }
+      } else if (v.column) {
+        fields.column = ['ungrouped tasks have no status, pick a group first']
+      }
+      this.#routeErrors(this.validate.task.create({ task }),
+        [[/column/, 'column'], [/group/, 'groupId'], [/date_due/, 'date_due'], [/tag/, 'tags'], [/name/, 'name']], fields, errors)
+      if (errors.length || Object.keys(fields).length) { return {success:false, errors, fields} }
+      const res = this.api.task.create({ task })
+      return res.success ? {success:true, type:'task', id:res.data.id} : {...res, fields:{}}
+    },
+    group: (t, v) => {
+      const fields = {}, errors = []
+      const P = this.#schema.enum.group.parentType
+      const group = { name:v.name, description:v.description, tags:v.tags, parentId:v.parent || t.boardId }
+      const parentType = v.parent ? P.group : P.board
+      this.#routeErrors(this.validate.group.create({ group, parentType }),
+        [[/parent/, 'parent'], [/tag/, 'tags'], [/name|already/, 'name']], fields, errors)
+      if (errors.length || Object.keys(fields).length) { return {success:false, errors, fields} }
+      const res = this.api.group.create({ group, parentType })
+      return res.success ? {success:true, type:'group', id:res.data.id} : {...res, fields:{}}
+    },
+    board: (t, v) => {
+      const fields = {}, errors = []
+      const board = { name:v.name, slug:v.slug.toUpperCase(), description:v.description, tags:v.tags }
+      this.#routeErrors(this.validate.board.create({ board }),
+        [[/slug/, 'slug'], [/tag/, 'tags'], [/name/, 'name']], fields, errors)
+      if (errors.length || Object.keys(fields).length) { return {success:false, errors, fields} }
+      const res = this.api.board.create({ board })
+      return res.success ? {success:true, type:'board', id:res.data.id} : {...res, fields:{}}
+    },
+  }
+  #boardGroupsInOrder(boardId) {
+    const board = this.#boards.find(x => x.id === boardId)
+    const out = []
+    for (const ref of board?.groups ?? []) {
+      const top = this.#groups.find(x => x.id === ref.id)
+      if (!top) { continue }
+      out.push(top)
+      for (const id of this.helper.descendantGroupIds(top.id)) { out.push(this.#groups.find(x => x.id === id)) }
+    }
+    return out.filter(Boolean)
+  }
+  // turns a normalized patch into existing api calls. validates every piece first, applies after
+  #applyEdit = {
+    task: (d, patch) => {
+      const errors = [], fields = {}
+      const fieldErr = (key, msg) => { (fields[key] ??= []).push(msg) }
+      const taskId = d.id
+      const update = { id:taskId }
+      for (const key of ['name', 'description', 'tags', 'date_due', 'date_completed']) {
+        if (Object.hasOwn(patch, key)) { update[key] = patch[key] }
+      }
+
+      // placement: group and status are one decision since the status options belong to the group
+      const home = this.helper.homeGroupOf(taskId)
+      const currentColumn = home?.columns.find(c => c.items.find(x => x.id === taskId))?.name ?? null
+      let op = null
+      if (Object.hasOwn(patch, 'groupId') || Object.hasOwn(patch, 'column')) {
+        const targetId = Object.hasOwn(patch, 'groupId') ? patch.groupId : (home?.id ?? '')
+        const target = targetId ? this.#groups.find(x => x.id === targetId) : null
+        let column = Object.hasOwn(patch, 'column') ? patch.column : currentColumn
+        if (target && !target.columns.find(c => c.name === column)) {
+          // changing only the group: keep the status if the new group has it, else its first column
+          if (Object.hasOwn(patch, 'column')) { fieldErr('column', `'${column}' is not a status in '${target.name}'`) }
+          else { column = target.columns[0]?.name }
+        }
+        if (!target && Object.hasOwn(patch, 'column') && patch.column) { fieldErr('column', 'ungrouped tasks have no status, pick a group first') }
+
+        if (!target && home) {
+          op = { validate:this.validate.group.task.remove, run:this.api.group.task.remove, args:{ groupId:home.id, taskId } }
+        } else if (target && !home) {
+          op = { validate:this.validate.group.task.add, run:this.api.group.task.add, args:{ groupId:target.id, taskId, column } }
+        } else if (target && home && (target !== home || column !== currentColumn)) {
+          op = { validate:this.validate.group.task.move, run:this.api.group.task.move,
+            args:{ groupId:home.id, taskId, column, ...(target !== home ? { toGroupId:target.id } : {}) } }
+        }
+      }
+
+      const hasUpdate = Object.keys(update).length > 1
+      if (hasUpdate) { errors.push(...this.validate.task.update({ task:update })) }
+      if (op) { errors.push(...op.validate(op.args)) }
+      if (errors.length || Object.keys(fields).length) { return {success:false, errors, fields} }
+
+      if (hasUpdate) { const res = this.api.task.update({ task:update }); if (!res.success) { return {...res, fields:{}} } }
+      if (op) { const res = op.run(op.args); if (!res.success) { return {...res, fields:{}} } }
+      return {success:true, changed:Object.keys(patch)}
+    },
+    group: (d, patch) => {
+      const errors = []
+      const update = { id:d.id }
+      for (const key of ['name', 'description', 'tags']) { if (Object.hasOwn(patch, key)) { update[key] = patch[key] } }
+      const hasUpdate = Object.keys(update).length > 1
+      const move = Object.hasOwn(patch, 'parent')
+        ? (patch.parent ? { id:d.id, toGroupId:patch.parent } : { id:d.id, toBoardId:d.boardId })
+        : null
+      if (hasUpdate) { errors.push(...this.validate.group.update({ group:update })) }
+      if (move) { errors.push(...this.validate.group.move(move)) }
+      if (errors.length) { return {success:false, errors, fields:{}} }
+      if (hasUpdate) { const res = this.api.group.update({ group:update }); if (!res.success) { return {...res, fields:{}} } }
+      if (move) { const res = this.api.group.move(move); if (!res.success) { return {...res, fields:{}} } }
+      return {success:true, changed:Object.keys(patch)}
+    },
+    board: (d, patch) => {
+      const update = { id:d.id, ...patch }
+      const errors = this.validate.board.update({ board:update })
+      if (errors.length) { return {success:false, errors, fields:{}} }
+      const res = this.api.board.update({ board:update })
+      if (!res.success) { return {...res, fields:{}} }
+      return {success:true, changed:Object.keys(patch)}
+    },
   }
   #schema = {
     // enums dead, doing everything in my power to not use them this time around

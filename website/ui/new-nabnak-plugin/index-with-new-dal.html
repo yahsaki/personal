@@ -93,6 +93,45 @@
       .nabnak .nabnak-desc { color: #FAFFFB; }
       .nabnak .nabnak-tags { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0; }
       .nabnak .nabnak-tag { border: 1px solid var(--cyan); color: var(--cyan); padding: 0 4px; }
+
+      /* update workflow */
+      .nabnak .nabnak-small { font-size: 11px; }
+      .nabnak .nabnak-card-meta-row { display: flex; justify-content: space-between; gap: 6px; }
+      .nabnak .nabnak-card.editing,
+      .nabnak .nabnak-board-card.editing { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+      .nabnak .nabnak-editing-tag { color: var(--cyan); }
+      .nabnak .nabnak-notice { color: var(--green); margin-top: 2px; flex-basis: 100%; }
+      .nabnak .nabnak-editor {
+        border: 1px solid var(--cyan); background: var(--raised);
+        margin: 6px 8px; padding: 6px 8px; flex-basis: 100%;
+      }
+      .nabnak .nabnak-editor-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-bottom: 6px; font-size: 14px; }
+      .nabnak .nabnak-editor-actions { margin-left: auto; display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
+      .nabnak .nabnak-editor-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 4px 16px; }
+      @media (max-width: 700px) { .nabnak .nabnak-editor-grid { grid-template-columns: 1fr; } }
+      .nabnak .nabnak-editor-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+      .nabnak .nabnak-field { display: flex; flex-direction: column; gap: 2px; border-left: 2px solid transparent; padding-left: 6px; }
+      .nabnak .nabnak-field.dirty { border-left-color: var(--yellow); }
+      .nabnak .nabnak-field.has-error { border-left-color: var(--red); }
+      .nabnak .nabnak-field-label { color: var(--muted); }
+      .nabnak .nabnak-field-error { color: var(--red); }
+      .nabnak .nabnak-field-warn { color: var(--yellow); }
+      .nabnak .nabnak-readonly { padding: 3px 0; }
+      .nabnak .nabnak-editor input,
+      .nabnak .nabnak-editor select,
+      .nabnak .nabnak-editor textarea,
+      .nabnak .nabnak-editor button {
+        background: #222529; color: #e1e4e8; border: 1px solid #555b63;
+        font: inherit; padding: 3px 5px; box-sizing: border-box; max-width: 100%;
+      }
+      .nabnak .nabnak-editor textarea { resize: vertical; width: 100%; }
+      .nabnak .nabnak-editor input[type=date] { color-scheme: dark; }
+      .nabnak .nabnak-editor :focus { outline: 1px solid var(--cyan); border-color: var(--cyan); }
+      .nabnak .nabnak-editor button { cursor: pointer; }
+      .nabnak .nabnak-editor .nabnak-save { border-color: var(--green); color: var(--green); }
+      .nabnak .nabnak-add { color: var(--muted); margin: 2px 6px; padding: 2px 4px; opacity: .55; }
+      .nabnak .nabnak-add:hover { opacity: 1; color: var(--cyan); background: var(--raised); }
+      .nabnak .nabnak-overview-tools { flex-basis: 100%; display: flex; gap: 12px; align-items: baseline; }
     </style>
   </head>
   <body>
@@ -179,7 +218,11 @@
 
         const view = new NabnakRenderer({ dal, root: document.getElementById('nabnak') })
         view.api.select({ groupId: nabnak })
-        // poke at it from devtools until the cli is wired: nabnak.dal.api..., then nabnak.view.api.render()
+        // poke at it from devtools until the cli is wired. the view re-renders on any dal change:
+        //   nabnak.dal.api.edit({ type:'task', id:'YAHZ-12', changes:{ column:'done' } })
+        //   nabnak.view.api.edit({ taskId:'YAHZ-12' }); nabnak.view.api.setField('status','done'); nabnak.view.api.saveEdit()
+        //   nabnak.dal.api.create({ type:'task', context:{ boardId:'yahbsite', groupId:'yahbsite/dal' }, values:{ name:'x' } })
+        //   nabnak.view.api.create({ type:'task' }); nabnak.view.api.setField('name','x'); nabnak.view.api.saveEdit()
         window.nabnak = { dal, view }
       })
     </script>
