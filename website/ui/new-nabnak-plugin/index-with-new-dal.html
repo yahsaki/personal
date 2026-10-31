@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>nabnak</title>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+        font-size: 12px;
+        font-family: 'Times New Roman', serif;
+      }
+      body { margin: 0; }
+
+      /* everything is scoped under .nabnak(readme todo: prefix css with module name) */
+      .nabnak {
+        --green: #66FF66;
+        --yellow: yellow;
+        --red: red;
+        --cyan: #04D9FF;
+        --muted: #8a9099;
+        --raised: #2b2f34;
+        --selected: #373c42;
+        display: grid;
+        grid-template-columns: minmax(160px, 1fr) 7fr;
+        height: calc(100vh - 10px);
+        margin: 4px;
+        border: 1px solid var(--green);
+      }
+      .nabnak .single-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+      .nabnak .nabnak-muted { color: var(--muted); font-weight: normal; }
+      .nabnak .nabnak-pre { white-space: pre-wrap; }
+      .nabnak [data-action] { cursor: pointer; }
+      .nabnak .selected { font-weight: bold; }
+      .nabnak .selected > span:first-child { text-decoration: underline; }
+
+      .nabnak .nabnak-board-name { color: var(--green); font-weight: bold; }
+      .nabnak .nabnak-group-name { color: var(--yellow); }
+      .nabnak .nabnak-task-name { color: var(--red); font-weight: bold; margin: 2px 0; }
+      .nabnak .nabnak-task-id { color: #e1e4e8; }
+
+      /* column colors(list-page summary colors from the old view) */
+      .nabnak .nabnak-count.nabnak-col-todo { color: var(--red); }
+      .nabnak .nabnak-count.nabnak-col-inprogress { color: var(--yellow); }
+      .nabnak .nabnak-count.nabnak-col-done { color: var(--green); }
+      .nabnak .nabnak-counts { display: inline-flex; gap: 3px; font-weight: bold; flex-shrink: 0; }
+
+      /* sidebar */
+      .nabnak .nabnak-side { border-right: 1px solid var(--green); overflow: auto; padding: 4px 0; }
+      .nabnak .nabnak-side-boards { border-bottom: 1px solid var(--green); padding-bottom: 8px; margin-bottom: 8px; }
+      .nabnak .nabnak-row { display: flex; justify-content: space-between; gap: 6px; padding: 1px 4px; }
+      .nabnak .nabnak-row:hover { background: var(--selected); }
+      .nabnak .nabnak-row.ancestor { font-weight: bold; }
+
+      .nabnak .nabnak-main { overflow: auto; min-width: 0; }
+
+      /* all boards overview */
+      .nabnak .nabnak-overview { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; padding: 8px; }
+      .nabnak .nabnak-board-card { border: 1px solid var(--green); padding: 6px; width: 260px; }
+      .nabnak .nabnak-card-head { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; }
+      .nabnak .nabnak-overview-groups { border-top: 1px solid var(--yellow); margin-top: 6px; padding-top: 4px; }
+
+      /* kanban */
+      .nabnak .nabnak-kanban-head { padding: 6px 8px; border-bottom: 1px solid var(--green); }
+      .nabnak .nabnak-crumbs { font-size: 18px; display: flex; align-items: baseline; flex-wrap: wrap; }
+      .nabnak .nabnak-tools { margin-left: auto; font-size: 12px; display: flex; gap: 10px; }
+      .nabnak .nabnak-link { color: var(--cyan); }
+      .nabnak .nabnak-kanban-head .nabnak-desc { color: #FAFFFB; margin-top: 2px; }
+
+      .nabnak .nabnak-grid { display: grid; }
+      .nabnak .nabnak-span { grid-column: 1 / -1; }
+      .nabnak .nabnak-col-head {
+        position: sticky; top: 0; z-index: 1; background: #222529;
+        font-size: 20px; font-weight: bold; padding: 4px 8px; border-bottom: 1px solid black;
+      }
+      .nabnak .nabnak-lane-head {
+        display: flex; align-items: center; gap: 8px; padding: 3px 8px;
+        background: var(--raised); border-top: 1px solid #000; border-left: 3px solid var(--yellow);
+      }
+      .nabnak .nabnak-lane-head.collapsed { opacity: .75; }
+      .nabnak .nabnak-lane-head .nabnak-counts { margin-left: auto; }
+      .nabnak .nabnak-lane-name { font-weight: bold; }
+      .nabnak .nabnak-caret { width: 10px; color: var(--muted); }
+      .nabnak .nabnak-cell { border-right: 1px solid black; padding: 2px 0 6px; min-width: 0; }
+      .nabnak .nabnak-cell:last-child { border-right: 0; }
+
+      .nabnak .nabnak-card { border: 1px solid var(--green); margin: 4px 6px; padding: 4px 6px; }
+      .nabnak .nabnak-card:hover { background: var(--raised); }
+      .nabnak .nabnak-card.selected-task { background: var(--selected); }
+      .nabnak .nabnak-card-meta { color: var(--muted); }
+      .nabnak .nabnak-card-dates { margin: 2px 0; }
+      .nabnak .nabnak-overdue { color: var(--red); }
+      .nabnak .nabnak-desc { color: #FAFFFB; }
+      .nabnak .nabnak-tags { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0; }
+      .nabnak .nabnak-tag { border: 1px solid var(--cyan); color: var(--cyan); padding: 0 4px; }
+    </style>
+  </head>
+  <body>
+    <div id="nabnak"></div>
+    <script>
+      const _ = {
+        state: {
+          // selection lives in renderer.state now
+        },
+        logger: {
+          level: { debug: 'debug', info: 'info', warn: 'warn', error: 'error' },
+          log: (text, level, blob) => {
+            if (typeof text !== 'string') {
+              console.error(`terminal.logger.log: log is not of type string`);return
+            }
+            if (!text.length) {
+              console.error(`terminal.logger.log: log text is empty`);return
+            }
+            if (!_.logger.level[level]) {
+              if (level) {
+                console.log(`caller sent a non enum value in the level argument. the log was probably constructed incorrectly`, level)
+              }
+              level = _.logger.level.info
+            }
+            const string = `[${level}]:${text}`
+            if (blob) { console.log(string, blob) }
+            else { console.log(string) }
+          },
+        },
+      }
+    </script>
+    <script src="nabnak-dal.js"></script>
+    <script src="nabnak-renderer.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // seeded through the api instead of hand written hydrate data, so it can't be
+        // inconsistent(the old hand written set had 'infrastructure' listed under nabnak
+        // while its parentId pointed at adelle-spiritual-website)
+        const dal = new NabnakDal({ quiet: true })
+        const must = (res) => { if (!res.success) { throw Error(res.errors.join('\n')) } return res.data?.id }
+
+        must(dal.api.board.create({ board: { name: 'yahbsite', slug: 'YAHZ',
+          description: 'Module personal website built in raw html and javascript', tags: ['personal'] } }))
+        must(dal.api.board.create({ board: { name: 'kikosaki', slug: 'KIKO' } }))
+
+        const nabnak = must(dal.api.board.group.create({ group: { name: 'nabnak', parentId: 'yahbsite',
+          description: 'kanban, backwards. cli first project management' } }))
+        const dalG = must(dal.api.group.group.create({ group: { name: 'dal', parentId: nabnak, description: 'data access layer' } }))
+        const renderer = must(dal.api.group.group.create({ group: { name: 'renderer', parentId: nabnak } }))
+        const v0 = must(dal.api.group.group.create({ group: { name: 'v0', parentId: nabnak, description: 'first push to go live-ish' } }))
+        const cli = must(dal.api.group.group.create({ group: { name: 'cli', parentId: v0 } }))
+        const ideas = must(dal.api.board.group.create({ group: { name: 'Ideas', parentId: 'yahbsite' } }))
+        must(dal.api.board.group.create({ group: { name: 'tester', parentId: 'yahbsite' } }))
+        const issues = must(dal.api.board.group.create({ group: { name: 'nabnak issues', parentId: 'yahbsite' } }))
+
+        const adelle = must(dal.api.board.group.create({ group: { name: 'Adelle Spiritual Website', parentId: 'kikosaki',
+          description: 'video streaming website' } }))
+        const infra = must(dal.api.group.group.create({ group: { name: 'infrastructure', parentId: adelle, description: 'backend setup' } }))
+
+        const t = (groupId, column, name, extra = {}) => must(dal.api.task.create({ task: {
+          boardId: groupId?.split('/')[0] ?? 'yahbsite', groupId, column, name, ...extra } }))
+
+        t(nabnak, 'todo', 'filter current views via tags', { description: "this isnt like 'change view via tags', its filtering current views by some kind of tag filter." })
+        t(dalG, 'done', 'refactor data access layer', { description: 'current DAL doesnt satisfy flexibility required, reimplement' })
+        t(dalG, 'done', 'design new DAL generic response', { description: 'design how the no parameter data structure should look like that will power renderer' })
+        t(dalG, 'done', 'support moving tasks between groups')
+        t(dalG, 'todo', 'column add/remove/shift', { description: 'api.group.column.* are still stubs' })
+        t(renderer, 'inprogress', 'design UI for new DAL', { description: 'DAL logic implemented enough to start designing front end' })
+        t(renderer, 'todo', 'show task priority in UI', { description: 'for some reason im not showing it' })
+        t(renderer, 'todo', 'build indicator bar', { description: 'vertically skinny bar with icons + potentially breadcrumbs reflecting the state of nabnak.\n- three spherical dots indicating selected level' })
+        t(v0, 'done', 'support readable ids', { description: "'slug-(incval)' becomes the task id, like known offenders" })
+        t(v0, 'inprogress', 'update dates properly', { tags: ['bug'], description: "some situations do not update 'date_updated' fields properly" })
+        t(v0, 'todo', 'support comments', { date_due: '2026-10-25' })
+        t(cli, 'todo', 'Support Task Status Update via CLI', { description: 'dal.api.group.task.move exists now, needs a command' })
+        t(cli, 'todo', 'scroll view via keybinds', { tags: ['feature'], description: 'im thinking SHIFT+<up/down>' })
+        t(ideas, 'done', 'support groups as epics', { description: 'once all tasks are complete the epic should get out of default views. done lanes start collapsed now' })
+        t(issues, 'done', 'fix description field', { tags: ['bug'] })
+        t(undefined, undefined, 'set DDL default val', { description: 'set the first option of non-required select lists to an empty value' })
+        t(infra, 'todo', 'pick a video host')
+        t(infra, 'inprogress', 'set up nabnak server', { description: 'GET:/ and POST:/ thats it' })
+
+        const integrity = dal.helper.verify()
+        if (integrity.length) { console.warn('integrity issues', integrity) }
+
+        const view = new NabnakRenderer({ dal, root: document.getElementById('nabnak') })
+        view.api.select({ groupId: nabnak })
+        // poke at it from devtools until the cli is wired: nabnak.dal.api..., then nabnak.view.api.render()
+        window.nabnak = { dal, view }
+      })
+    </script>
+  </body>
+</html>

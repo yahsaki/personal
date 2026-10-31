@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <style>
+      html {
+        background-color: #222529;
+        color: #e1e4e8;
+        font-size: 12px;
+      }
+      .nabnak {
+      margin-top: 4px;
+      margin-left: 4px;
+      margin-right: 4px;
+      border: 1px solid #66FF66;
+      height: 98%;
+      overflow: auto;
+    }
+    .nabnak .single-line {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .selected {
+      font-weight: bold;
+      text-decoration: underline;
+    }
+    .list-page {}
+    .list-page .title {
+      display: block;
+      font-weight: bold;
+      color: #04D9FF;
+    }
+    .list-page .main-title {
+      font-size: 30px;
+    }
+    .list-page .single-line {}
+    .list-page .project {
+      border: 1px solid #66FF66;
+      margin: 16px;
+      padding: 4px;
+    }
+    .list-page .project .title {}
+    .list-page .group {
+      border: 1px solid yellow;
+      margin: 4px;
+      padding: 4px;
+    }
+    .list-page .task {
+      border: 1px solid red;
+      margin: 4px;
+      padding: 4px;
+    }
+    
+    .list-page .content-item-container {
+      display: grid;
+      grid-template-columns: 1fr 8fr;
+    }
+    .list-page .content-item-container .content-item-label {
+      font-weight: bold;
+      text-align: center;
+    }
+    .list-page .content-item-container .content-item-value {
+      white-space: pre-wrap;
+    }
+    .list-page .task-name {
+
+    }
+    .list-page .task-description {
+      color: #FAFFFB;
+    }
+
+    .list-page .task-summary-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    .list-page .task-summary-container .todo-container {
+      font-weight: bold;
+      color: red;
+    }
+    .list-page .task-summary-container .inprogress-container {
+      font-weight: bold;
+      color: yellow;
+    }
+    .list-page .task-summary-container .done-container {
+      font-weight: bold;
+      color: green;
+    } 
+    
+    .kanban-page {
+      display: grid;
+      grid-template-columns: 1fr 8fr;
+    }
+    .kanban-page .col-0 {
+      border-right: 1px solid #66FF66;
+      overflow-x: hidden;
+      height: inherit;
+    }
+    .kanban-page .col-0 .projects-container {
+      border-bottom: 1px solid #66FF66;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+    .kanban-page .col-0 .groups-container {}
+    .kanban-page .col-1 .tasks-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      height: inherit;
+    }
+    .kanban-page .col-1 .task-col {
+      border: 1px solid black;
+      overflow-y: auto;
+    }
+    .kanban-page .col-1 .task {
+      border: 1px solid #66FF66;
+      margin: 6px;
+    }
+    .kanban-page .col-1 .selected-task {
+      background-color: #373c42;
+    }
+    .kanban-page .col-1 .selected-task .description,
+    .kanban-page .col-1 .selected-task .acceptanceCriteria {
+      white-space: pre-wrap;
+    }
+    .kanban-page .col-1 .task .project-name {
+      font-weight: bold;
+      color: #66FF66;
+    }
+    .kanban-page .col-1 .task .group-name {
+      font-weight: bold;
+      color: yellow;
+    }
+    .kanban-page .col-1 .task .task-name {
+      font-weight: bold;
+      color: red;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="nabnak kanban-page">
+      <div class="col-0">
+        <div class="projects-container">
+          
+          <div class="project single-line selected">[0]yahbsite</div>
+          
+          <div class="project single-line ">[1]Playbooks</div>
+          
+          <div class="project single-line ">[2]Content Creation</div>
+          
+          <div class="project single-line ">[3]Sky Delivery</div>
+          
+          <div class="project single-line ">[4]blog</div>
+          
+          <div class="project single-line ">[5]General</div>
+          
+          <div class="project single-line ">[6]mp2g</div>
+          
+        </div>
+        <div class="groups-container">
+          
+            <div class="group single-line selected">[0-0]Nabnak</div>
+            
+            <div class="group single-line ">[0-1]Playbox</div>
+            
+            <div class="group single-line ">[0-2]Ideas</div>
+            
+            <div class="group single-line ">[0-3]tester</div>
+            
+            <div class="group single-line ">[0-4]nabnak issues</div>
+            
+        </div>
+      </div>
+      <div class="col-1">
+        <div style="display:none;" class="header-container">
+          <h1>ALL PROJECTS</h1>
+        </div>
+        <div class="content-container">
+          <div class="tasks-container">
+            <div class="task-col todo-col">
+              <h1>TODO</h1>
+              <div class="task-list">
+                
+                <div class="task">
+                  <p>
+                    [0-0-16]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">show task priority in UI</p>
+                  <p>created: <b>2026-10-22</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">for some reason im not showing it</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-14]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">build indicator bar</p>
+                  <p>created: <b>2026-10-22</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">vertically skinny bar with icons + potentially breadcrumbs reflecting the state of nabnak. honestly only one thing comes to mind for it:
+    - three spherical dots indicating selected level. selected dot is green, unselected dot border is green with default color in center</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-13]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">support groups as epics</p>
+                  <p>created: <b>2026-10-22</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">example: currently doing a V0 push for nabnak. these tasks could/should be assigned to a 'nabnak v0' epic, or something. once the epic/story is complete, as in all tasks completed, the epic should fuck the fuck off from default views</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-11]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">filter current views via tags</p>
+                  <p>created: <b>2026-10-21</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">this isnt like 'change view via tags', its filtering current views by some kind of tag filter. while this is fairly easy to implement, it would also be easy to accidentally hide objects indefinitely without handling the after filter logic.
+    - create a form that allows users(me) to change tag filter criteria by some static logic
+    - come up with a way to view filtered content outside of updating the form</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-10]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">Support Task Status Update via CLI</p>
+                  <p>created: <b>2026-10-21</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">we need a way to update task's status via the command line. the  previous implementation used a ddl in the view but we are still CLI first this time around. we intend to support more than status eventually but status trumps everything else for the time being</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-4]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">support comments</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">support creating comments and displaying comments</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-3]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">update object index</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">implement a command to update the index of a project/group/task
+    
+    - restrict changing active parent indexes to prevent current view changing to god knows what after the update: only non-selected indexes can be changed</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-2]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">scroll view via keybinds</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: feature</p>
+                  <p class="description single-line">implement a way to scroll the view using keybinds. im thinking SHIFT+<up down="">. will need to implement a keyup/keydown event listener to know if SHIFT is still pressed</up></p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-1]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">set DDL default val</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">set the first option of non-required select lists to an empty value</p>
+                </div>
+                
+              </div>
+            </div>
+            <div class="task-col inprogress-col">
+              <h1>In Progress</h1>
+              <div class="task-list">
+                
+                <div class="task">
+                  <p>
+                    [0-0-15]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">support readable ids</p>
+                  <p>created: <b>2026-10-22</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">readable IDs for projects/groups and potentially even tasks would make associating objects to objects via tag much better than fucking guids. we still need guids of course
+    - add new field(named slug) on project
+    - add new project field that increments when a new task is created. 'slug-(incval)' will become the tasks id, like known offenders
+    - groups will need slugs too, not 100% sure how to handle that yet</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-8]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">update dates properly</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: bug</p>
+                  <p class="description single-line">some situations do not update 'date_updated' fields properly, like creating this task right now for instance</p>
+                </div>
+                
+              </div>
+            </div>
+            <div class="task-col done-col">
+              <h1>Done</h1>
+              <div class="task-list">
+                
+                <div class="task">
+                  <p>
+                    [0-0-12]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">support moving tasks between groups</p>
+                  <p>created: <b>2026-10-21</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">implement a command that allows a user to move a task between groups
+    - limiting migration to groups in same project for now
+    - must have project-&gt;group already selected
+    - selected task will be ignored
+    how to use:
+    - with a project-&gt;group selected
+    - run command 'mv (taskIndex) (groupIndex)'</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-9]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">implement kanban view</p>
+                  <p>created: <b>2026-10-21</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">we need kanban view</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-7]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">limit list view descriptions</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: rejected</p>
+                  <p class="description single-line">261021: trashing this for now. changed long text styles to render single line with 'single-line' class
+    
+    261013: lets make a setting that can be changed to toggle the view instead. would love for that to be a keybind.
+    
+    list view descriptions are only supposed to be showing one line of text but theyre displaying everything on multiple lines at the moment</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-6]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">limit data in projects list view</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line">change projects list view to either totals groups/tasks or hide completed tasks
+    - show groups but totals of tasks for groups. if we dont show groups it makes it difficult to select
+    - potentially implement collapse</p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-5]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">delete support</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: </p>
+                  <p class="description single-line"></p>
+                </div>
+                
+                <div class="task">
+                  <p>
+                    [0-0-0]
+                    <span class="project-name">yahbsite</span>
+                    <span class="group-name">Nabnak</span>
+                  </p>
+                  <p class="name task-name single-line">fix description field</p>
+                  <p>created: <b>2026-10-12</b></p>
+                  <p class="tags">tags: bug</p>
+                  <p class="description single-line">description field in all forms are inputs instead of textareas</p>
+                </div>
+                
+              </div>
+            </div>
+          </div>
+    
+        </div>
+      </div>
+      </div>
+  </body>
+</html>

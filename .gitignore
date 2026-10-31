@@ -5,3 +5,4 @@ website/ui/*.json
 website/playbox/hydrate/*.json
 temp
 rendercv_output
+.vscode
