@@ -406,6 +406,7 @@ html {
         height: calc(100vh - 10px);
         margin: 4px;
         border: 1px solid var(--green);
+        height: 98%;
       }
       .nabnak .single-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
       .nabnak .nabnak-muted { color: var(--muted); font-weight: normal; }
