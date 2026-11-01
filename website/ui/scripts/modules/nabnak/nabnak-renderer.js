@@ -78,6 +78,28 @@ class NabnakRenderer {
     })
     this.#dal.subscribe(() => this.#render())
   }
+  // didnt return what I wanted for some reason. its like this.state referenced a different
+  // property. since state is public im just referencing it publicly in callers
+  //get data() { return {state: structuredClone(this.state)} }
+  setState(args) {
+    if (!args) { _.logger.log(`nabnak-renderer setState: args invalid`,_.logger.level.warn,args);return }
+    if (args.view !== 'boards' && args.view !== 'kanban') {
+      _.logger.log(`nabnak-renderer setState: view prop should be 'boards' or 'kanban'`,_.logger.level.warn,args);return
+    }
+    if (typeof args.lanes !== 'object') {
+      _.logger.log(`nabnak-renderer setState: lanes should be an object`,_.logger.level.warn,args);return
+    }
+    // I honestly dont know all the limitations... this is what happens when you dont write it. well
+    // this fn is wrong in the first place
+    // aw jeez state is public, dont have to put this here. whatever
+    this.state.view = args.view
+    this.state.boardId  = args.boardId
+    this.state.groupId = args.groupId
+    this.state.taskId = args.taskId
+    this.state.lanes = args.lanes
+    this.state.edit = args.edit
+    this.state.notice = args.notice
+  }
   // what a cli command calls. every method re-renders so callers dont have to
   api = {
     render: () => this.#render(),
@@ -277,6 +299,8 @@ class NabnakRenderer {
         else if (input.setSelectionRange && input.type !== 'date') { input.setSelectionRange(end, end) }
       } catch { /* selects and date inputs dont do selection ranges */ }
     }
+    _.logger.log('render called',_.logger.level.debug)
+    _.module.nabnak.db.save()
   }
 
   // ---------- sidebar ----------

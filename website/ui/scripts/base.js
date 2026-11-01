@@ -275,13 +275,47 @@ html {
 
       const view = new NabnakRenderer({ dal, root: parentEl })
       _.module.nabnak.view = view
+      console.log('view state', view.state)
+
+      _.module.nabnak.db.get()
       view.api.render()
     },
     unload: () => {
-
+      // UNTESTED, mostly due to no alternative views yet
     },
-    setting: {},
-    state: {},
+    db: {
+      save: () => {
+        const mod = _.module.nabnak
+        const dataString = JSON.stringify(mod.dal.data)
+        const stateString = JSON.stringify(mod.view.state)
+        _.storage.save(`${mod.setting.name}-data`, dataString)
+        _.storage.save(`${mod.setting.name}-state`, stateString)
+        _.logger.log(`nabnak.db.save: data saved`,_.logger.level.debug, {data:mod.dal.data,state:mod.view.state})
+      },
+      get: () => {
+        const mod = _.module.nabnak
+        const data = _.storage.get(`${mod.setting.name}-data`)
+        if (data) {
+          mod.dal.hydrate(data)
+          _.logger.log(`nabnak.db.get: fetched data`, _.logger.level.debug, data)
+        } else {
+          _.logger.log(`nabnak.db.get: no data found`)
+        }
+        const state = _.storage.get(`${mod.setting.name}-state`)
+        if (state) {
+          mod.view.setState(state)
+          _.logger.log(`nabnak.db.get: fetched state`, _.logger.level.debug, state)
+        } else {
+          _.logger.log(`nabnak.db.get: no state found`)
+        }
+      },
+    },
+    setting: {
+      name: 'nabnak'
+    },
+    state: {
+      // nothing here, renderer state lives in the renderer class. dal is stateless
+    },
     setCss: () => {
       const style = document.createElement('style')
       style.setAttribute('data-module', 'nabnak')

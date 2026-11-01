@@ -30,14 +30,7 @@ class NabnakDal {
       }
     }
     if (Object.hasOwn(args, 'hydrate') && args.hydrate === true) {
-      // clone so the caller cant mutate our private state through the arrays they handed us
-      this.#boards = structuredClone(args.boards ?? [])
-      this.#groups = structuredClone(args.groups ?? [])
-      this.#tasks = structuredClone(args.tasks ?? [])
-      // hydrate skips every validator, so this is the only thing standing between bad data
-      // and a renderer that loops forever on a parent cycle
-      const issues = this.helper.verify()
-      if (issues.length) { throw Error(`hydrate failed integrity check:\n- ${issues.join('\n- ')}`) }
+      this.hydrate(args)      
     }
   }
   get boards() { return structuredClone(this.#boards) }
@@ -50,7 +43,21 @@ class NabnakDal {
       tasks: structuredClone(this.#tasks),
     }
   }
-
+  hydrate(args) {
+    if (!args || (
+      !Array.isArray(args.boards) ||
+      !Array.isArray(args.groups) ||
+      !Array.isArray(args.tasks)
+    )) { _.logger.log(`nanbal-dal hydrate: args param invalid`,_.logger.level.warn,args);return }
+    // clone so the caller cant mutate our private state through the arrays they handed us
+    this.#boards = structuredClone(args.boards)
+    this.#groups = structuredClone(args.groups)
+    this.#tasks = structuredClone(args.tasks)
+    // hydrate skips every validator, so this is the only thing standing between bad data
+    // and a renderer that loops forever on a parent cycle
+    const issues = this.helper.verify()
+    if (issues.length) { throw Error(`hydrate failed integrity check:\n- ${issues.join('\n- ')}`) }
+  }
   // change notifications. fn({ action }) runs after any api call that succeeded and changed
   // something(everything except .get). nested calls(edit => task.update => ...) only fire once,
   // for the outermost call. the renderer re-renders on it, a saver can debounce on it
@@ -74,6 +81,9 @@ class NabnakDal {
             try { listener({ action: `${path}.${key}`, args: args[0] }) }
             catch (e) { this.#log(`subscriber threw on ${path}.${key}: ${e.message}`, 'error') }
           }
+          // renderer's render function hits everything compared this this fn
+          //_.logger.log('something happened',_.logger.level.debug)
+          //_.module.nabnak.db.save()
         }
         return res
       }
