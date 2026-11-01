@@ -92,6 +92,7 @@ class NabnakRenderer {
     // I honestly dont know all the limitations... this is what happens when you dont write it. well
     // this fn is wrong in the first place
     // aw jeez state is public, dont have to put this here. whatever
+    // TODO: just check Object.hasOwn(args, <propname>), easy peasy
     this.state.view = args.view
     this.state.boardId  = args.boardId
     this.state.groupId = args.groupId
@@ -103,7 +104,13 @@ class NabnakRenderer {
   // what a cli command calls. every method re-renders so callers dont have to
   api = {
     render: () => this.#render(),
-    showBoards: () => { this.state.view = 'boards'; this.state.taskId = null; this.#render() },
+    showBoards: () => {
+      this.state.view = 'boards'
+      this.state.boardId = null
+      this.state.groupId = null
+      this.state.taskId = null
+      this.#render()
+    },
     // { boardId } for a whole board, { groupId } for a group(board is worked out)
     select: (args) => {
       if (args?.groupId) {

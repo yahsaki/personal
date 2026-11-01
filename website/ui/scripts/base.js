@@ -248,9 +248,8 @@ html {
   }
 
   // LOAD NABNAK
-  // I usually try to modularly load but ill make this static for now
-  // this code should be migrated to /modules/nabnak/index.js, living here for now
-
+  // I usually try to modularly load but ill make this static for now, so:
+  // TODO: move this code to /modules/nabnak/index.js
   _.module.nabnak = {
     load: (selector) => {
       const root = document.querySelector(selector)
@@ -279,9 +278,71 @@ html {
 
       _.module.nabnak.db.get()
       view.api.render()
+
+      // force change terminal's active module to nabnak, kinda hacky to do it like this
+      _.module.terminal.fn.updateCurrentModule('nabnak')
+
+      _.logger.log('nabnak.load: load complete')
     },
     unload: () => {
       // UNTESTED, mostly due to no alternative views yet
+    },
+    fn: {
+      handleInput: (args) => {
+        const mod = _.module.nabnak
+
+        switch (args[0]) {
+          case 'del':
+          case 'delete': {
+            // im not directly calling render after delete but it re-renders. not even sure how :cry:
+            console.log('renderer state', mod.view.state)
+            if (mod.view.state.taskId?.length) {
+              // delete task
+              console.log('deleting task')
+              if (!mod.setting.deleteConfirmed) {
+                _.logger.log(`confirm deletion of task '${mod.view.state.taskId}'`,_.logger.level.error)
+                mod.setting.deleteConfirmed = true
+              } else {
+                mod.dal.api.task.delete({ id: mod.view.state.taskId })
+                // setting 'notice' breaks delete? leaving it alone for now, dont care about jank
+                //mod.view.state.notice = `deleted task '${mod.view.state.taskId}'`
+                mod.view.state.taskId = null
+                mod.setting.deleteConfirmed = false
+              }
+            } else if (mod.view.state.groupId?.length) {
+              // delete group
+              console.log('deleting group')
+              if (!mod.setting.deleteConfirmed) {
+                _.logger.log(`confirm deletion of group '${mod.view.state.groupId}'`,_.logger.level.error)
+                mod.setting.deleteConfirmed = true
+              } else {
+                mod.dal.api.group.delete({ id: mod.view.state.groupId })
+                //mod.view.state.notice = `deleted group '${mod.view.state.groupId}'`
+                mod.view.state.groupId = null
+                mod.setting.deleteConfirmed = false
+              }
+            } else if (mod.view.state.boardId?.length) {
+              // delete board
+              console.log('deleting board')
+              if (!mod.setting.deleteConfirmed) {
+                _.logger.log(`confirm deletion of board '${mod.view.state.boardId}'`,_.logger.level.error)
+                mod.setting.deleteConfirmed = true
+              } else {
+                mod.dal.api.board.delete({ id: mod.view.state.boardId })
+                //mod.view.state.notice = `deleted board '${mod.view.state.boardId}'`
+                mod.view.state.boardId = null
+                mod.setting.deleteConfirmed = false
+              }
+            } else {
+              // nothing selected
+              _.logger.log('nabnak: nothing selected')
+            }
+          } break
+          default: {
+            _.logger.log(`nabnak: unknown command '${args[0]}'`,_.logger.level.warn,args)
+          } break
+        }
+      },
     },
     db: {
       save: () => {
@@ -311,7 +372,19 @@ html {
       },
     },
     setting: {
-      name: 'nabnak'
+      name: 'nabnak',
+      // obvious bug: if triggering delete on an object and not following through, the delete will
+      // immediately happened when changing selected object and re-triggering delete since we only
+      // (un)set this value on delete. dont care enough to track delete per object type and dont care
+      // enough to reset on scope change for now
+      // this value resets on page refresh which is fine since its not saved to state.
+      // TODO: clear value when user does anything other than enter delete a second time. move this
+      // prop to dal(or renderer, dal is better), reset it when user does anything else besides enter
+      // delete a second time
+      // TODO: save deleted object to a TTL deleted objects array. we dont need any functionality to
+      // restore, we can just do so manually from json(for now). we will need functionality to purge
+      // on TTL though, dont want it growing indefinitely
+      deleteConfirmed: false,
     },
     state: {
       // nothing here, renderer state lives in the renderer class. dal is stateless

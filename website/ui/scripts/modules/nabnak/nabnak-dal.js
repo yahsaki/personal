@@ -2,6 +2,10 @@ class NabnakDal {
   #boards = []
   #groups = []
   #tasks = []
+  // 261101: hacked in (in progress)feature: priority. for now, for speed sake,
+  // this is just a text field I manually update. just need to implement a way 
+  // to view and update this
+  #priority = null
   #quiet = false
   // the dal lives in its own file now, so it can't assume the page's '_' exists. 'const _'
   // isnt a window prop, but classic scripts share one global scope so typeof still sees it
