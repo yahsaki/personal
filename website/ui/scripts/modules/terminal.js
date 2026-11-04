@@ -249,19 +249,40 @@ _.module.terminal = {
         return _.module.terminal.fn.command[input]({})
       }
 
+      // remember this doesnt support quoted arguments with spaces in it, need fixing
+      const args = input.split(' ')
+      const command = args.splice(0, 1)[0]
+
       if (currentMode !== module.terminal.name) {
+        // first check if we are attempting to switch modules
+        if (_.module[command]) {
+          // module switch attempt being made
+
+          // somewhat hack: if the thing we are switching to is of type tool, call proper fns.
+          // this is a partial hack because this doesnt belong here, this belongs somewhere
+          // like _.changeModule
+          if (_.module[command].setting?.type === 'tool') {
+            _.module[currentMode].unload()
+            // HACK: static reference to content selector
+            _.module[command].load('.base-section-content')
+            _.module.terminal.fn.updateCurrentModule(command)
+            return
+          }
+        }
+
         // we dont need command split out in this situation. need that command parsing
         let args = input.split(' ')
         // not validating module existence atm but I am writing a comment about not doing so for some reason
         _.module[currentMode].fn.handleInput(args);return
       }
       
-      // remember this doesnt support quoted arguments with spaces in it, need fixing
-      const args = input.split(' ')
-      const command = args.splice(0, 1)[0]
       // if the command starts with a module name, let that module handle it
       if (_.module[command]) {
         if (!args.length) {
+          if (_.module[command].setting?.type === 'tool') {
+            // HACK: static reference to content selector
+            _.module[command].load('.base-section-content')
+          }
           // switch the current module
           _.module.terminal.fn.updateCurrentModule(command);return
         } else {

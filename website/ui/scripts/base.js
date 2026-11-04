@@ -285,7 +285,9 @@ html {
       _.logger.log('nabnak.load: load complete')
     },
     unload: () => {
-      // UNTESTED, mostly due to no alternative views yet
+      // these static vars are bad man
+      document.getElementById('nabnak').remove()
+      document.getElementById('nabnak-style').remove()
     },
     fn: {
       handleInput: (args) => {
@@ -385,6 +387,7 @@ html {
       // restore, we can just do so manually from json(for now). we will need functionality to purge
       // on TTL though, dont want it growing indefinitely
       deleteConfirmed: false,
+      type: 'tool',
     },
     state: {
       // nothing here, renderer state lives in the renderer class. dal is stateless
@@ -392,6 +395,7 @@ html {
     setCss: () => {
       const style = document.createElement('style')
       style.setAttribute('data-module', 'nabnak')
+      style.setAttribute('id', 'nabnak-style')
       style.innerText = `
       .nabnak {
         --green: #66FF66;
@@ -521,7 +525,9 @@ html {
   _.module.nabnak.load('.base-section-content')
   // END NABNAK
 
-
+if (_.module.cpicker) {
+  
+}
   // defaulting the view to nabnak for now
   //if (_.module.nabnak) {
     //_.module.nabnak.load('.base-section-content')

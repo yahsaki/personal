@@ -171,5 +171,8 @@ _.module.textScroller = {
     // shiza, just realized we cant instantiate more than one terminal tool due to data.parentSelector, need something
     // like this for that to work
     instances: [],
+  },
+  setting: {
+    type: 'widget',
   }
 }
