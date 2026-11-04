@@ -397,6 +397,7 @@ html {
         --green: #66FF66;
         --yellow: yellow;
         --red: red;
+        --orange: orange;
         --cyan: #04D9FF;
         --muted: #8a9099;
         --raised: #2b2f34;
@@ -417,11 +418,11 @@ html {
 
       .nabnak .nabnak-board-name { color: var(--green); font-weight: bold; }
       .nabnak .nabnak-group-name { color: var(--yellow); }
-      .nabnak .nabnak-task-name { color: var(--red); font-weight: bold; margin: 2px 0; }
+      .nabnak .nabnak-task-name { color: var(--orange); font-weight: bold; margin: 2px 0; }
       .nabnak .nabnak-task-id { color: #e1e4e8; }
 
       /* column colors(list-page summary colors from the old view) */
-      .nabnak .nabnak-count.nabnak-col-todo { color: var(--red); }
+      .nabnak .nabnak-count.nabnak-col-todo { color: var(--orange); }
       .nabnak .nabnak-count.nabnak-col-inprogress { color: var(--yellow); }
       .nabnak .nabnak-count.nabnak-col-done { color: var(--green); }
       .nabnak .nabnak-counts { display: inline-flex; gap: 3px; font-weight: bold; flex-shrink: 0; }
